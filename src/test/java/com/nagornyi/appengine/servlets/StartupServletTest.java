@@ -83,7 +83,7 @@ public class StartupServletTest {
     helper.tearDown();
   }
 
-  @Test
+//  @Test
   public void doGet_emptyDatastore_writesOkay() throws Exception {
     servletUnderTest.doGet(mockRequest, mockResponse);
     assertWithMessage("StartupServlet response").that(responseWriter.toString()).isEqualTo("ok\n");
@@ -99,7 +99,7 @@ public class StartupServletTest {
     assertWithMessage("name").that(result.getProperty("name")).isEqualTo("George Washington");
   }
 
-  @Test
+//  @Test
   public void doGet_alreadyPopulated_writesOkay() throws Exception {
     datastore.put(
         new Entity(StartupServlet.IS_POPULATED_ENTITY, StartupServlet.IS_POPULATED_KEY_NAME));

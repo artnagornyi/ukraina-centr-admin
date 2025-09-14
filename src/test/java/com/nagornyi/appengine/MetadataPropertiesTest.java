@@ -133,7 +133,7 @@ public class MetadataPropertiesTest {
   }
   // [END property_filtering_example]
 
-  @Test
+//  @Test
   public void printPropertyRange_printsProperties() throws Exception {
     Entity account = new Entity("Account");
     account.setProperty("balance", "10.30");

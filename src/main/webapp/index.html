@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/locales/uk.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal-overlay {
@@ -186,6 +187,7 @@
                         </div>
                         <div id="report-buttons" class="flex flex-wrap gap-2 border-t border-gray-200 pt-4 items-center">
                             <button id="generate-passenger-list-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Список пасажирів</button>
+                            <button id="generate-surname-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Список прізвищ</button>
                             <button id="generate-boarding-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Посадка</button>
                             <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -261,6 +263,7 @@
         const addPassengerBtn = document.getElementById('add-passenger-btn');
         const modalContainer = document.getElementById('modal-container');
         const generatePassengerListBtn = document.getElementById('generate-passenger-list-btn');
+        const generateSurnameListBtn = document.getElementById('generate-surname-list-btn');
         const generateBoardingListBtn = document.getElementById('generate-boarding-list-btn');
         const reportDisplayArea = document.getElementById('report-display-area');
         const printReportBtn = document.getElementById('print-report-btn');
@@ -1300,6 +1303,59 @@
             }).join('');
         }
 
+        async function generateSurnameListReport() {
+            const tripId = reportTripSelect.value;
+            if (!tripId) {
+                alert('Будь ласка, оберіть рейс для формування звіту.');
+                return;
+            }
+
+            const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+            if (!trip) {
+                alert("Помилка: не вдалося знайти обраний рейс.");
+                return;
+            }
+            const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+            const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+            const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+            
+            const passengers = (state.collections.Passengers || [])
+                .filter(p => p.TripId === tripId)
+                .map(p => {
+                    const client = state.collections.Clients.find(c => c.id === p.ClientId);
+                    return { ...p, client };
+                })
+                .sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            let listItems = '';
+            passengers.forEach((p, index) => {
+                const surname = (p.client?.Name || '').split(' ')[0]; // Assuming surname is the first word
+                if (surname) {
+                    listItems += `<li>${surname}</li>`;
+                }
+            });
+
+            const reportHTML = `
+                <div class="report-header">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                </div>
+                <h3>Список пасажирів (прізвища)</h3>
+                <ol style="list-style-type: decimal; padding-left: 20px; font-size: 12px;">
+                    ${listItems}
+                </ol>
+            `;
+            
+            reportDisplayArea.innerHTML = reportHTML;
+            printReportBtn.classList.remove('hidden');
+        }
+
         async function generatePassengerListReport() {
             const tripId = reportTripSelect.value;
             if (!tripId) {
@@ -1630,6 +1686,7 @@
             addPassengerBtn.addEventListener('click', () => openPassengerModal());
             addDirectoryItemBtn.addEventListener('click', () => openDirectoryModal(state.currentDirectory));
             generatePassengerListBtn.addEventListener('click', generatePassengerListReport);
+            generateSurnameListBtn.addEventListener('click', generateSurnameListReport);
             generateBoardingListBtn.addEventListener('click', generateBoardingListReport);
             printReportBtn.addEventListener('click', handlePrint);
             
@@ -1678,4 +1735,3 @@
     </script>
 </body>
 </html>
-

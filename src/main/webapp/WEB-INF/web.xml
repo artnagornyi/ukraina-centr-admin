@@ -98,7 +98,7 @@
   <security-constraint>
     <web-resource-collection>
       <web-resource-name>profile</web-resource-name>
-      <url-pattern>/stats</url-pattern>
+      <url-pattern>/</url-pattern>
     </web-resource-collection>
     <user-data-constraint>
       <transport-guarantee>CONFIDENTIAL</transport-guarantee>

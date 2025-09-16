@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/locales/uk.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal-overlay {
@@ -76,21 +75,36 @@
             flex-direction: column;
             gap: 0.25rem;
             margin-bottom: 2rem;
-            font-size: 12px;
+            font-size: 14pt;
         }
         #report-display-area table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
         }
         #report-display-area th, #report-display-area td {
             border: 1px solid #ccc;
-            padding: 8px;
+            padding: 2px 4px;
             text-align: left;
         }
         #report-display-area th {
             background-color: #f2f2f2;
         }
+        /* General Report Table Styles */
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
+        .report-table tr.group-header-row { border-bottom: 2px solid #000; }
+        .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
+
+        /* Departure Report Specifics */
+        .departure-report-table tr.group-header-row td { font-size: 10pt; font-weight: normal; }
+        .departure-report-table td { font-size: 10pt; }
+        .departure-report-table td.passenger-name-cell {
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            font-size: 11pt;
+        }
+        .departure-report-table td.phones-cell { width: 1%; white-space: nowrap; }
+
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -108,7 +122,7 @@
         <!-- Header -->
         <header class="bg-white shadow-md relative overflow-hidden">
             <div class="container mx-auto px-4 py-3 flex justify-between items-center relative" style="z-index: 2;">
-                <h1 class="text-xl font-bold text-gray-700">Passenger Booking</h1>
+                <h1 id="home-link" class="text-xl font-bold text-gray-700 cursor-pointer">Passenger Booking v1.1</h1>
                 <nav>
                     <button data-view="main" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Головна</button>
                     <button data-view="directories" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Довідники</button>
@@ -187,8 +201,9 @@
                         </div>
                         <div id="report-buttons" class="flex flex-wrap gap-2 border-t border-gray-200 pt-4 items-center">
                             <button id="generate-passenger-list-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Список пасажирів</button>
-                            <button id="generate-surname-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Список прізвищ</button>
-                            <button id="generate-boarding-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Посадка</button>
+                            <button id="generate-call-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Обзвон</button>
+                            <button id="generate-departure-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Відправка</button>
+                            <button id="generate-transit-list-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg">Транзит</button>
                             <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                   <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
@@ -263,8 +278,9 @@
         const addPassengerBtn = document.getElementById('add-passenger-btn');
         const modalContainer = document.getElementById('modal-container');
         const generatePassengerListBtn = document.getElementById('generate-passenger-list-btn');
-        const generateSurnameListBtn = document.getElementById('generate-surname-list-btn');
-        const generateBoardingListBtn = document.getElementById('generate-boarding-list-btn');
+        const generateCallListBtn = document.getElementById('generate-call-list-btn');
+        const generateDepartureListBtn = document.getElementById('generate-departure-list-btn');
+        const generateTransitListBtn = document.getElementById('generate-transit-list-btn');
         const reportDisplayArea = document.getElementById('report-display-area');
         const printReportBtn = document.getElementById('print-report-btn');
 
@@ -417,7 +433,7 @@
                 return snapshot.empty ? null : snapshot.docs[0];
             };
 
-            await seedCollection('Country', () => Promise.resolve([ { Cod: 0, Name: "Україна", ISO: "UA" }, { Cod: 2, Name: "Italia", ISO: "IT" } ]));
+            await seedCollection('Country', () => Promise.resolve([ { Cod: 0, Name: "Україна", ISO: "UA" }, { Cod: 1, Name: "European Union", ISO: "EU" }, { Cod: 2, Name: "Italia", ISO: "IT" } ]));
             await seedCollection('Drivers', () => Promise.resolve([ { Name: "Хащевацький Олег" }, { Name: "Кизим Леонід" } ]));
             await seedCollection('Buses', () => Promise.resolve([ { Plate: "BA3474EM", Name: "Setra s431 DT", Capacity: 78 }, { Plate: "BA0205BT", Name: "Neoplan", Capacity: 76 } ]));
             await seedCollection('Agents', () => Promise.resolve([ { Name: "Rubikon" }, { Name: "Sharry" }, { Name: "Вікторія Мартинова" } ]));
@@ -630,7 +646,16 @@
                 form.querySelector(`[data-key="TripId"]`).value = tripText;
             }
 
-            const focusTargetKey = isEditing ? 'ClientId' : (state.selectedTripId && state.selectedTripId !== 'all' ? 'ClientId' : 'AgentId');
+            let focusTargetKey;
+            if (isEditing) {
+                focusTargetKey = 'ClientId';
+            } else {
+                if (state.currentView === 'main' && tripSelect.value === 'all') {
+                    focusTargetKey = 'TripId';
+                } else {
+                    focusTargetKey = 'ClientId';
+                }
+            }
             
             setupModal(newModal, (e) => handlePassengerFormSubmit(e, passengerId), `autocomplete-input-${focusTargetKey}`);
             
@@ -730,6 +755,10 @@
             
             let activeIndex = -1;
 
+            input.addEventListener('focus', () => {
+                input.select();
+            });
+
             const setActiveItem = () => {
                 const items = resultsContainer.querySelectorAll('.autocomplete-item');
                 items.forEach((item, index) => item.classList.toggle('autocomplete-active', index === activeIndex));
@@ -805,7 +834,14 @@
                     resultsContainer.classList.add('hidden');
                     return;
                 }
-                const filtered = (state.collections[collectionName] || []).filter(item => getDisplayValue(null, key, item.id).toLowerCase().includes(searchTerm));
+
+                let sourceData = [...(state.collections[collectionName] || [])];
+                if (collectionName === 'Trips') {
+                    sourceData.sort((a, b) => String(a.Cod || '').localeCompare(String(b.Cod || '')));
+                }
+
+                const filtered = sourceData.filter(item => getDisplayValue(null, key, item.id).toLowerCase().includes(searchTerm));
+                
                 resultsContainer.innerHTML = filtered.length 
                     ? filtered.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(null, key, s.id)}</div>`).join('')
                     : '<div class="p-2 text-gray-500">Не знайдено. ↓ для створення</div>';
@@ -817,9 +853,11 @@
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     
-                    // If list is hidden and input is empty, show the full list
                     if (resultsContainer.classList.contains('hidden') && input.value.trim() === '') {
-                        const allItems = (state.collections[collectionName] || []);
+                        let allItems = [...(state.collections[collectionName] || [])];
+                         if (collectionName === 'Trips') {
+                            allItems.sort((a, b) => String(a.Cod || '').localeCompare(String(b.Cod || '')));
+                        }
                         resultsContainer.innerHTML = allItems.length 
                             ? allItems.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(null, key, s.id)}</div>`).join('')
                             : '<div class="p-2 text-gray-500">Немає записів. ↓ для створення</div>';
@@ -1137,7 +1175,16 @@
             let data = [...(state.collections[state.currentDirectory] || [])];
             
             if (state.currentDirectory === 'Stations' && state.stationCountryFilter !== 'all') {
-                data = data.filter(station => station.CountryId === state.stationCountryFilter);
+                const selectedCountry = (state.collections.Country || []).find(c => c.id === state.stationCountryFilter);
+                const ukraineCountry = (state.collections.Country || []).find(c => c.Cod === 0);
+
+                if (selectedCountry && selectedCountry.Cod === 1) { // Cod 1 is for 'European Union'
+                    if (ukraineCountry) {
+                        data = data.filter(station => station.CountryId !== ukraineCountry.id);
+                    }
+                } else {
+                    data = data.filter(station => station.CountryId === state.stationCountryFilter);
+                }
             }
 
             if (state.directorySearchTerm) {
@@ -1237,14 +1284,32 @@
                 const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
                 const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
                 const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
-                let stationBegin = '—', stationEnd = '—';
+                let stationBegin, stationEnd, stationBeginCode, stationEndCode;
+
                  if (client) {
-                    const stUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA)?.Name || '—';
-                    const stEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU)?.Name || '—';
-                    stationBegin = country?.Cod === 0 ? stUA : stEU;
-                    stationEnd = country?.Cod === 0 ? stEU : stUA;
+                    const stBeginUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA);
+                    const stBeginEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU);
+                    const stEndUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA);
+                    const stEndEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU);
+
+                    if (country?.Cod === 0) {
+                        stationBegin = stBeginUA?.Name || '—';
+                        stationEnd = stEndEU?.Name || '—';
+                        stationBeginCode = stBeginUA?.Cod || 0;
+                        stationEndCode = stEndEU?.Cod || 0;
+                    } else {
+                        stationBegin = stBeginEU?.Name || '—';
+                        stationEnd = stEndUA?.Name || '—';
+                        stationBeginCode = stBeginEU?.Cod || 0;
+                        stationEndCode = stEndUA?.Cod || 0;
+                    }
+                 } else {
+                    stationBegin = '—';
+                    stationEnd = '—';
+                    stationBeginCode = 0;
+                    stationEndCode = 0;
                  }
-                return { ...p, ClientName: client?.Name || '', TripDate: trip?.Date?.toMillis() || 0, StationBegin: stationBegin, StationEnd: stationEnd };
+                return { ...p, ClientName: client?.Name || '', TripDate: trip?.Date?.toMillis() || 0, StationBegin: stationBegin, StationEnd: stationEnd, StationBeginCode: stationBeginCode, StationEndCode: stationEndCode };
             });
 
             if (state.passengerSearchTerm) {
@@ -1257,10 +1322,35 @@
                 });
             }
 
-            if (state.passengerSortConfig.key) {
-                 const { key, direction } = state.passengerSortConfig;
-                 enriched.sort((a,b) => (a[key] || '').toString().localeCompare((b[key] || '').toString()) * (direction === 'ascending' ? 1 : -1));
-            }
+            const { key, direction } = state.passengerSortConfig;
+            const sortDirection = direction === 'ascending' ? 1 : -1;
+
+            enriched.sort((a, b) => {
+                let first, second;
+                if (key === 'StationBegin') {
+                    first = a.StationBeginCode;
+                    second = b.StationBeginCode;
+                } else if (key === 'StationEnd') {
+                    first = a.StationEndCode;
+                    second = b.StationEndCode;
+                } else {
+                    first = a[key] || '';
+                    second = b[key] || '';
+                }
+
+                const comparison = (String(first)).localeCompare(String(second), undefined, { numeric: true });
+                if (comparison !== 0) return comparison * sortDirection;
+
+                // Secondary sort by ClientName
+                if (key === 'StationBegin' || key === 'StationEnd') {
+                    const nameA = a.ClientName || '';
+                    const nameB = b.ClientName || '';
+                    return nameA.localeCompare(nameB);
+                }
+
+                return 0;
+            });
+
             passengersTableHead.querySelectorAll('th[data-sort-key]').forEach(th => th.innerHTML = `${th.textContent.replace(/[▲▼]/g, '').trim()} ${state.passengerSortConfig.key === th.dataset.sortKey ? (state.passengerSortConfig.direction === 'ascending' ? '▲' : '▼') : ''}`);
             passengerDateHeader.style.display = tripId === 'all' ? '' : 'none';
             if (tripId !== 'all') {
@@ -1303,7 +1393,7 @@
             }).join('');
         }
 
-        async function generateSurnameListReport() {
+        async function generateCallListReport() {
             const tripId = reportTripSelect.value;
             if (!tripId) {
                 alert('Будь ласка, оберіть рейс для формування звіту.');
@@ -1311,28 +1401,59 @@
             }
 
             const trip = (state.collections.Trips || []).find(t => t.id === tripId);
-            if (!trip) {
-                alert("Помилка: не вдалося знайти обраний рейс.");
-                return;
-            }
+            if (!trip) { return; }
+
             const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
             const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
             const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
-            
+
             const passengers = (state.collections.Passengers || [])
                 .filter(p => p.TripId === tripId)
                 .map(p => {
                     const client = state.collections.Clients.find(c => c.id === p.ClientId);
-                    return { ...p, client };
-                })
-                .sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+                    const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+                    
+                    const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+                    const townBeginId = client ? (country?.Cod === 0 ? client.TownIdUA : client.TownIdEU) : null;
+                    const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
 
-            let listItems = '';
-            passengers.forEach((p, index) => {
-                const surname = (p.client?.Name || '').split(' ')[0]; // Assuming surname is the first word
-                if (surname) {
-                    listItems += `<li>${surname}</li>`;
+                    const stationBegin = state.collections.Stations.find(s => s.id === stationBeginId);
+                    const townBegin = state.collections.Towns.find(t => t.id === townBeginId);
+                    const townEnd = state.collections.Towns.find(t => t.id === townEndId);
+                    
+                    return { ...p, client, stationBegin, townBegin, townEnd };
+                });
+
+            const groupedByStation = passengers.reduce((groups, p) => {
+                const stationId = p.stationBegin?.id || 'unknown';
+                if (!groups[stationId]) {
+                    groups[stationId] = {
+                        name: p.stationBegin?.Name || 'Невідомо',
+                        code: p.stationBegin?.Cod || 0,
+                        passengers: []
+                    };
                 }
+                groups[stationId].passengers.push(p);
+                return groups;
+            }, {});
+
+            const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[a].code - groupedByStation[b].code);
+
+            let listContent = '';
+            sortedGroupKeys.forEach(stationId => {
+                const group = groupedByStation[stationId];
+                listContent += `${group.name}\n`;
+                
+                group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+                
+                group.passengers.forEach((p, index) => {
+                    const statusMarker = p.Status ? '+' : ' ';
+                    const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                    const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                    const phones = [telUA, telEU].filter(Boolean).join(', ');
+                    listContent += `${index + 1}. ${statusMarker}\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${phones}\n`;
+                });
+                listContent += '\n';
             });
 
             const reportHTML = `
@@ -1346,10 +1467,77 @@
                         <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                     </div>
                 </div>
-                <h3>Список пасажирів (прізвища)</h3>
-                <ol style="list-style-type: decimal; padding-left: 20px; font-size: 12px;">
-                    ${listItems}
-                </ol>
+                <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>
+            `;
+            
+            reportDisplayArea.innerHTML = reportHTML;
+            printReportBtn.classList.remove('hidden');
+        }
+
+        async function generateTransitReport() {
+            const tripId = reportTripSelect.value;
+            if (!tripId) {
+                alert('Будь ласка, оберіть рейс для формування звіту.');
+                return;
+            }
+
+            const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+            if (!trip) {
+                alert("Помилка: не вдалося знайти обраний рейс.");
+                return;
+            }
+
+            const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+            const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+            const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+            
+            const transitStationIds = (state.collections.Stations || [])
+                .filter(s => s.Name && s.Name.startsWith("Tranzit"))
+                .map(s => s.id);
+
+            if (transitStationIds.length === 0) {
+                alert("Помилка: не вдалося знайти жодної транзитної станції (назва починається з 'Tranzit').");
+                return;
+            }
+
+            const passengers = (state.collections.Passengers || [])
+                .filter(p => p.TripId === tripId)
+                .map(p => {
+                    const client = state.collections.Clients.find(c => c.id === p.ClientId);
+                    const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+                    
+                    const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+                    const stationEndId = client ? (country?.Cod === 0 ? client.StationIdEU : client.StationIdUA) : null;
+                    const townBeginId = client ? (country?.Cod === 0 ? client.TownIdUA : client.TownIdEU) : null;
+                    const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
+
+                    const townBegin = state.collections.Towns.find(t => t.id === townBeginId);
+                    const townEnd = state.collections.Towns.find(t => t.id === townEndId);
+
+                    return { ...p, client, stationBeginId, stationEndId, townBegin, townEnd };
+                })
+                .filter(p => transitStationIds.includes(p.stationBeginId) || transitStationIds.includes(p.stationEndId))
+                .sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            let listContent = '';
+            passengers.forEach((p, index) => {
+                const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                listContent += `${index + 1}.\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${telUA}\t${telEU}\n`;
+            });
+
+            const reportHTML = `
+                <div class="report-header">
+                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                </div>
+                <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>
             `;
             
             reportDisplayArea.innerHTML = reportHTML;
@@ -1437,7 +1625,7 @@
             printReportBtn.classList.remove('hidden');
         }
 
-        async function generateBoardingListReport() {
+        async function generateDepartureReport() {
             const tripId = reportTripSelect.value;
             if (!tripId) {
                 alert('Будь ласка, оберіть рейс для формування звіту.');
@@ -1472,6 +1660,7 @@
                     groups[stationId] = {
                         name: p.stationBegin?.Name || 'Невідомо',
                         code: p.stationBegin?.Cod || 0,
+                        time: p.stationBegin?.TimeBegin || '',
                         passengers: []
                     };
                 }
@@ -1485,19 +1674,35 @@
             let passengerCount = 0;
             sortedGroupKeys.forEach(stationId => {
                 const group = groupedByStation[stationId];
-                tableBodyHTML += `<tr><td colspan="6" style="background-color: #e0e0e0; font-weight: bold;">${group.code} ${group.name}</td></tr>`;
+                tableBodyHTML += `
+                    <tr class="group-header-row">
+                        <td colspan="5">
+                            <strong>${group.time}</strong> ${group.name}
+                        </td>
+                    </tr>`;
                 
                 group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
                 
                 group.passengers.forEach(p => {
                     passengerCount++;
+                    const statusMarkerHTML = p.Status ? '<br>+' : '';
+                    
+                    const stationName = p.stationEnd?.Name || '—';
+                    const nameParts = stationName.split(' ');
+                    const firstWord = nameParts.shift() || '';
+                    const restOfName = nameParts.join(' ');
+                    const formattedStationEnd = restOfName ? `${firstWord}<br>${restOfName}` : firstWord;
+
+                    const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                    const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                    const phones = [telUA, telEU].filter(Boolean).join('<br>');
+
                     tableBodyHTML += `
-                        <tr>
-                            <td>${passengerCount}</td>
-                            <td>${p.client?.Name || ''}</td>
-                            <td>${p.stationEnd?.Name || '—'}</td>
-                            <td>${p.client?.TelUA || ''}</td>
-                            <td>${p.client?.TelEU || ''}</td>
+                        <tr class="passenger-row">
+                            <td>${passengerCount}${statusMarkerHTML}</td>
+                            <td class="passenger-name-cell">${p.client?.Name || ''}</td>
+                            <td>${formattedStationEnd}</td>
+                            <td class="phones-cell">${phones}</td>
                             <td>${p.Note || ''}</td>
                         </tr>
                     `;
@@ -1505,7 +1710,7 @@
             });
 
             const reportHTML = `
-                 <div class="report-header">
+                 <div class="report-header" style="font-size: 14pt;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
                         <span style="text-align: right;">${route?.Name || ''}</span>
@@ -1515,17 +1720,7 @@
                         <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                     </div>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>№</th>
-                            <th>Прізвище пасажира</th>
-                            <th>Вокзал прибуття</th>
-                            <th>Телефон (UA)</th>
-                            <th>Телефон (EU)</th>
-                            <th>Примітка</th>
-                        </tr>
-                    </thead>
+                <table class="departure-report-table report-table">
                     <tbody>
                         ${tableBodyHTML}
                     </tbody>
@@ -1571,17 +1766,31 @@
                     flex-direction: column;
                     gap: 0.25rem;
                     margin-bottom: 2rem;
-                    font-size: 12px;
+                    font-size: 14pt;
                 }
                 .report-header > div {
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-start;
                 }
-                table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                h1 { font-size: 2rem; text-align: center; }
+                table { width: 100%; border-collapse: collapse; }
+                pre { font-family: 'Inter', sans-serif; font-size: 12px; white-space: pre-wrap; }
+
+                /* General Report Table Styles */
+                .report-table { width: 100%; border-collapse: collapse; }
+                .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
+                .report-table tr.group-header-row { border-bottom: 2px solid #000; }
+                .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
+
+                /* Departure Report Specifics */
+                .departure-report-table tr.group-header-row td { font-size: 10pt; font-weight: normal; }
+                .departure-report-table td { font-size: 10pt; }
+                .departure-report-table td.passenger-name-cell {
+                    border-left: 1px solid #ccc;
+                    border-right: 1px solid #ccc;
+                    font-size: 11pt;
+                }
+                .departure-report-table td.phones-cell { width: 1%; white-space: nowrap; }
             `;
             
             printWindow.document.write('<!DOCTYPE html><html><head><title>Друк звіту</title>');
@@ -1598,6 +1807,7 @@
         }
 
         function setupEventListeners() {
+            document.getElementById('home-link').addEventListener('click', () => switchView('main'));
             navButtons.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
             directoryTabsContainer.addEventListener('click', e => {
                 if (e.target.closest('.dir-tab-btn')) {
@@ -1671,6 +1881,11 @@
                     otherSelect.value = selectedId;
                 }
                 if (state.currentView === 'main') {
+                    if (selectedId === 'all') {
+                        state.passengerSortConfig = { key: 'ClientName', direction: 'ascending' };
+                    } else {
+                        state.passengerSortConfig = { key: 'StationBegin', direction: 'ascending' };
+                    }
                     renderPassengerTable(selectedId);
                 }
                 // Clear report when trip changes on reports page
@@ -1686,8 +1901,9 @@
             addPassengerBtn.addEventListener('click', () => openPassengerModal());
             addDirectoryItemBtn.addEventListener('click', () => openDirectoryModal(state.currentDirectory));
             generatePassengerListBtn.addEventListener('click', generatePassengerListReport);
-            generateSurnameListBtn.addEventListener('click', generateSurnameListReport);
-            generateBoardingListBtn.addEventListener('click', generateBoardingListReport);
+            generateCallListBtn.addEventListener('click', generateCallListReport);
+            generateDepartureListBtn.addEventListener('click', generateDepartureReport);
+            generateTransitListBtn.addEventListener('click', generateTransitReport);
             printReportBtn.addEventListener('click', handlePrint);
             
             document.body.addEventListener('click', e => {

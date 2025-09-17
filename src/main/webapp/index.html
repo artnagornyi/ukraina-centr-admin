@@ -110,7 +110,7 @@
     <header class="bg-white shadow-md relative overflow-hidden">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center relative" style="z-index: 2;">
             <h1 id="home-link" class="text-xl font-bold text-gray-700 cursor-pointer">
-                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.2</span>
+                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.6</span>
             </h1>
             <nav>
                 <button data-view="main" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Головна</button>
@@ -595,6 +595,9 @@
 
         const modalHTML = `<div class="modal-overlay"><div class="modal-content"><form><h2 class="text-2xl font-bold mb-6">${title}</h2><div class="space-y-4">
                 ${formFieldsHTML}
+
+                <div id="client-info-display" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 space-y-1 hidden"></div>
+
                 <div class="flex items-center space-x-4"><label class="flex items-center"><input type="checkbox" name="Ticket" class="h-4 w-4" ${passenger.Ticket ? 'checked' : ''}><span class="ml-2">Квиток</span></label><label class="flex items-center"><input type="checkbox" name="Status" class="h-4 w-4" ${passenger.Status ? 'checked' : ''}><span class="ml-2">Підтверджено</span></label><label class="flex items-center"><input type="checkbox" name="Place" class="h-4 w-4" ${passenger.Place ? 'checked' : ''}><span class="ml-2">Додаткове місце</span></label></div></div><div class="flex justify-end mt-6"><button type="button" class="modal-close-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2">Скасувати</button><button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Зберегти</button></div></form></div></div>`;
         modalContainer.insertAdjacentHTML('beforeend', modalHTML);
 
@@ -624,7 +627,6 @@
             }
         }
 
-        // Show edit buttons for pre-filled fields
         const allHiddenInputs = form.querySelectorAll('input[type="hidden"]');
         allHiddenInputs.forEach(hidden => {
             if (hidden.value) {
@@ -633,6 +635,54 @@
                 if (editBtn) editBtn.classList.remove('hidden');
             }
         });
+
+        // Логіка для оновлення інформаційного блоку
+        const clientHiddenInput = form.querySelector('input[name="ClientId"]');
+        if(clientHiddenInput) {
+            // Показати дані одразу, якщо форма відкрита для редагування
+            updateClientInfoDisplay(clientHiddenInput.value, newModal);
+            // Додати слухача подій для оновлення даних при виборі нового клієнта
+            clientHiddenInput.addEventListener('change', (e) => {
+                updateClientInfoDisplay(e.target.value, newModal);
+            });
+        }
+    }
+
+    function updateClientInfoDisplay(clientId, scopeElement) {
+        const infoDisplay = scopeElement.querySelector('#client-info-display');
+        if (!infoDisplay) return;
+
+        if (!clientId) {
+            infoDisplay.innerHTML = '';
+            infoDisplay.classList.add('hidden');
+            return;
+        }
+
+        const client = state.collections.Clients.find(c => c.id === clientId);
+        if (!client) {
+            infoDisplay.innerHTML = '';
+            infoDisplay.classList.add('hidden');
+            return;
+        }
+
+        const townUa = getDisplayValue('Clients', 'TownIdUA', client.TownIdUA);
+        const stationUa = getDisplayValue('Clients', 'StationIdUA', client.StationIdUA);
+        const townEu = getDisplayValue('Clients', 'TownIdEU', client.TownIdEU);
+        const stationEu = getDisplayValue('Clients', 'StationIdEU', client.StationIdEU);
+        const telUa = client.TelUA ? `+38${client.TelUA}` : '—';
+        const telEu = client.TelEU ? `+39${client.TelEU}` : '—';
+        const npNum = client.NPNum || '—';
+
+        const infoHTML = `
+                <div class="border-t border-gray-200 pt-2">
+                    <div><strong>UA:</strong> ${townUa} / ${stationUa} | <strong>Тел:</strong> ${telUa}</div>
+                    <div><strong>EU:</strong> ${townEu} / ${stationEu} | <strong>Тел:</strong> ${telEu}</div>
+                    <div><strong>Нова Пошта:</strong> ${npNum}</div>
+                </div>
+            `;
+
+        infoDisplay.innerHTML = infoHTML;
+        infoDisplay.classList.remove('hidden');
     }
 
     function setupModal(modalElement, submitHandler, focusTargetId = null) {
@@ -1640,34 +1690,56 @@
             const group = groupedByStation[stationId];
             tableBodyHTML += `
                     <tr class="group-header-row">
-                        <td colspan="5" style="text-align: right;">
+                        <td colspan="4" style="text-align: right; padding: 4px;">
                             ${group.name} <strong>${group.time}</strong>
                         </td>
                     </tr>`;
 
-            group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+            const mainPassengers = group.passengers.filter(p => !p.Place);
+            const additionalPlacePassengers = group.passengers.filter(p => p.Place);
 
-            group.passengers.forEach(p => {
+            mainPassengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            mainPassengers.forEach(p => {
                 passengerCount++;
                 const statusMarkerHTML = p.Status ? '<br>+' : '';
-
-                const stationName = p.stationEnd?.Name || '—';
-                const nameParts = stationName.split(' ');
-                const firstWord = nameParts.shift() || '';
-                const restOfName = nameParts.join(' ');
-                const formattedStationEnd = restOfName ? `${firstWord}<br>${restOfName}` : firstWord;
+                const passengerName = p.client?.Name || '';
+                const destination = p.stationEnd?.Name || '—';
+                const paymentInfoHTML = p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : '';
 
                 const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
                 const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
-                const phones = [telUA, telEU].filter(Boolean).join('<br>');
+                const phones = [telUA, telEU].filter(Boolean).join(', ');
+                const note = p.Note || '';
 
+                // --- ЗМІНИ ТУТ ---
+                // Змінено порядок та ширину колонок, оновлено шрифт імені пасажира
                 tableBodyHTML += `
                         <tr class="passenger-row">
-                            <td>${passengerCount}${statusMarkerHTML}</td>
-                            <td class="passenger-name-cell">${p.client?.Name || ''}</td>
-                            <td>${formattedStationEnd}</td>
-                            <td class="phones-cell">${phones}</td>
-                            <td>${p.Note || ''}</td>
+                            <td style="text-align: center; width: 5%; vertical-align: top;">${passengerCount}${statusMarkerHTML}</td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 50%;">
+                                <div style="font-size: 11pt;">${passengerName}</div>
+                                <div>${destination}</div>
+                            </td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; text-align: center; width: 15%;">
+                                ${paymentInfoHTML}
+                            </td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 30%;">
+                                <div>${phones}</div>
+                                <div>${note}</div>
+                            </td>
+                        </tr>
+                    `;
+            });
+
+            additionalPlacePassengers.forEach(p => {
+                const passengerName = p.client?.Name || '';
+                tableBodyHTML += `
+                        <tr class="passenger-row">
+                            <td></td>
+                            <td colspan="3" style="border-left: 1px solid #ccc; padding: 2px 4px;">
+                                <div style="font-size: 8pt;">+ додаткове місце: ${passengerName}</div>
+                            </td>
                         </tr>
                     `;
             });
@@ -1684,7 +1756,7 @@
                         <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                     </div>
                 </div>
-                <table class="departure-report-table report-table">
+                <table class="report-table" style="font-size: 9pt;">
                     <tbody>
                         ${tableBodyHTML}
                     </tbody>

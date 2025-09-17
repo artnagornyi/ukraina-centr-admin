@@ -1685,7 +1685,7 @@
         const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[a].code - groupedByStation[b].code);
 
         let tableBodyHTML = '';
-        let passengerCount = 0;
+        let totalPassengerCount = 0;
         sortedGroupKeys.forEach(stationId => {
             const group = groupedByStation[stationId];
             tableBodyHTML += `
@@ -1700,8 +1700,13 @@
 
             mainPassengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
+            let groupPassengerCount = 0;
+
             mainPassengers.forEach(p => {
-                passengerCount++;
+                totalPassengerCount++;
+                groupPassengerCount++;
+                const numberingHTML = `${groupPassengerCount} / <b>${totalPassengerCount}</b>`;
+
                 const statusMarkerHTML = p.Status ? '<br>+' : '';
                 const passengerName = p.client?.Name || '';
                 const destination = p.stationEnd?.Name || '—';
@@ -1712,16 +1717,14 @@
                 const phones = [telUA, telEU].filter(Boolean).join(', ');
                 const note = p.Note || '';
 
-                // --- ЗМІНИ ТУТ ---
-                // Змінено порядок та ширину колонок, оновлено шрифт імені пасажира
                 tableBodyHTML += `
                         <tr class="passenger-row">
-                            <td style="text-align: center; width: 5%; vertical-align: top;">${passengerCount}${statusMarkerHTML}</td>
+                            <td style="text-align: center; width: 5%; vertical-align: top;">${numberingHTML}${statusMarkerHTML}</td>
                             <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 50%;">
                                 <div style="font-size: 11pt;">${passengerName}</div>
                                 <div>${destination}</div>
                             </td>
-                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; text-align: center; width: 15%;">
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%;">
                                 ${paymentInfoHTML}
                             </td>
                             <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 30%;">
@@ -1732,13 +1735,21 @@
                     `;
             });
 
+            // --- ЗМІНА ТУТ ---
+            // Рядок для додаткового місця тепер має 4 колонки, примітка виводиться в останній
             additionalPlacePassengers.forEach(p => {
                 const passengerName = p.client?.Name || '';
+                const note = p.Note || '';
+
                 tableBodyHTML += `
                         <tr class="passenger-row">
                             <td></td>
-                            <td colspan="3" style="border-left: 1px solid #ccc; padding: 2px 4px;">
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top;">
                                 <div style="font-size: 8pt;">+ додаткове місце: ${passengerName}</div>
+                            </td>
+                            <td style="border-left: 1px solid #ccc;"></td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top;">
+                                <div style="font-size: 8pt;">${note}</div>
                             </td>
                         </tr>
                     `;
@@ -1812,15 +1823,19 @@
         const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[b].code - groupedByStation[a].code);
 
         let tableBodyHTML = '';
+        let totalArrivalCount = 0; // Наскрізний лічильник
 
         sortedGroupKeys.forEach(stationId => {
             const group = groupedByStation[stationId];
-            let passengerCount = 0;
+            let groupPassengerCount = 0; // Лічильник в межах групи
 
             group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
             group.passengers.forEach((p, index) => {
-                passengerCount++;
+                totalArrivalCount++;
+                groupPassengerCount++;
+                const numberingHTML = `${groupPassengerCount} / <b>${totalArrivalCount}</b>`;
+
                 const isFirstInGroup = index === 0;
                 const groupHeader = isFirstInGroup
                     ? `<strong>${group.time}</strong> ${group.name}`
@@ -1829,7 +1844,7 @@
                 tableBodyHTML += `
                         <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
                             <td style="width: 25%;">${groupHeader}</td>
-                            <td style="width: 5%;">${passengerCount}</td>
+                            <td style="width: 5%; text-align: center;">${numberingHTML}</td>
                             <td style="width: 30%;">${p.client?.Name || ''}</td>
                             <td style="width: 20%;">${p.townEnd?.Name || '—'}</td>
                             <td style="width: 20%;">${p.Note || ''}</td>

@@ -86,12 +86,12 @@
         .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
         .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
 
-        .departure-report-table tr.group-header-row td { font-size: 10pt; font-weight: normal; }
-        .departure-report-table td { font-size: 10pt; }
+        .departure-report-table tr.group-header-row td { font-size: 9pt; font-weight: normal; }
+        .departure-report-table td { font-size: 9pt; }
         .departure-report-table td.passenger-name-cell {
             border-left: 1px solid #ccc;
             border-right: 1px solid #ccc;
-            font-size: 11pt;
+            font-size: 10pt;
         }
         .departure-report-table td.phones-cell { width: 1%; white-space: nowrap; }
 
@@ -99,7 +99,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-<!-- Auth Status Overlay -->
 <div id="auth-overlay" class="fixed inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-[100]">
     <div class="bg-white p-6 rounded-lg shadow-lg text-center">
         <h2 class="text-xl font-semibold mb-2">Підключення...</h2>
@@ -107,13 +106,11 @@
     </div>
 </div>
 
-<!-- App View -->
 <div id="app-view" class="hidden">
-    <!-- Header -->
     <header class="bg-white shadow-md relative overflow-hidden">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center relative" style="z-index: 2;">
             <h1 id="home-link" class="text-xl font-bold text-gray-700 cursor-pointer">
-                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.5</span>
+                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.2</span>
             </h1>
             <nav>
                 <button data-view="main" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Головна</button>
@@ -123,11 +120,8 @@
         </div>
     </header>
 
-    <!-- Main Content Area -->
     <main id="main-content" class="container mx-auto p-4">
-        <!-- Main Page View -->
         <div id="main-page-view">
-            <!-- Trip Selection and Info -->
             <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center">
                     <label for="trip-select" class="mr-2 font-semibold">Рейс:</label>
@@ -138,7 +132,6 @@
                 <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Додати пасажира</button>
             </div>
 
-            <!-- Passengers Table -->
             <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
                 <table class="w-full text-left">
                     <thead id="passengers-table-head" class="bg-gray-50 border-b-2 border-gray-200">
@@ -152,17 +145,14 @@
                     </tr>
                     </thead>
                     <tbody id="passengers-table-body">
-                    <!-- Passenger rows will be inserted here -->
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Directories Page View -->
         <div id="directories-page-view" class="hidden">
             <div class="bg-white p-4 rounded-lg shadow-md mb-4">
                 <div id="directory-tabs" class="flex flex-wrap gap-2 border-b border-gray-200 pb-2 mb-4">
-                    <!-- Directory tabs will be inserted here -->
                 </div>
                 <div class="flex justify-between items-center mb-4">
                     <h2 id="directory-title" class="text-2xl font-bold"></h2>
@@ -176,12 +166,10 @@
                     <button id="add-directory-item-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0">Додати запис</button>
                 </div>
                 <div id="directory-table-container" class="overflow-x-auto">
-                    <!-- Directory table will be rendered here -->
                 </div>
             </div>
         </div>
 
-        <!-- Reports Page View -->
         <div id="reports-page-view" class="hidden">
             <div class="bg-white p-4 rounded-lg shadow-md mb-4">
                 <div class="flex border-b mb-4">
@@ -236,19 +224,15 @@
                     </div>
                 </div>
 
-                <!-- Area to display the generated report -->
                 <div id="report-display-area" class="mt-6 border-t border-gray-200 pt-4">
-                    <!-- Report content will be injected here -->
                 </div>
             </div>
         </div>
     </main>
 </div>
 
-<!-- Modals -->
 <div id="modal-container"></div>
 
-<!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -367,7 +351,8 @@
         stationCountryFilter: 'all',
         selectedTripId: null,
         lastAgentReportData: [],
-        currentReportType: 'trip'
+        currentReportType: 'trip',
+        passengerFilter: 'all' // 'all', 'main', 'unconfirmed', 'additional'
     };
 
     const DIRECTORIES = {
@@ -442,16 +427,6 @@
             return date;
         }
         return null;
-    }
-
-    async function loadStaticDirectories() {
-        const staticCollections = Object.keys(DIRECTORIES).filter(dir => !['Clients', 'Users', 'Passengers'].includes(dir));
-        const promises = staticCollections.map(async (collectionName) => {
-            const q = query(collection(db, collectionName));
-            const snapshot = await getDocs(q);
-            state.collections[collectionName] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        });
-        await Promise.all(promises);
     }
 
     // --- MODAL LOGIC ---
@@ -1089,33 +1064,38 @@
     }
 
     async function initializeAppLogic() {
-        await loadStaticDirectories(); // Load static data once
         setupEventListeners();
         renderDirectoryTabs();
-        await setupRealtimeListeners(); // Set up listeners for dynamic data
+        await setupRealtimeListeners(); // Set up listeners for all data
         switchView('main');
     }
 
     async function setupRealtimeListeners() {
-        const dynamicCollections = ['Passengers', 'Clients', 'Users'];
-        const promises = dynamicCollections.map(collectionName => {
+        const allCollections = [
+            'Passengers', 'Clients', 'Users', 'Agents', 'Buses',
+            'Drivers', 'Country', 'Stations', 'Towns', 'Routes', 'Trips'
+        ];
+
+        const promises = allCollections.map(collectionName => {
             return new Promise((resolve) => {
                 if (state.listeners[collectionName]) state.listeners[collectionName]();
                 const q = query(collection(db, collectionName));
                 state.listeners[collectionName] = onSnapshot(q, (snapshot) => {
                     state.collections[collectionName] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                    // Re-render only if the current view depends on the updated collection
-                    if ((state.currentView === 'directories' && state.currentDirectory === collectionName) ||
-                        (state.currentView !== 'directories' && (collectionName === 'Passengers' || collectionName === 'Clients'))) {
-
-                        if (state.currentView === 'directories') {
+                    // Re-render the current view if it's affected by the data change
+                    if (state.currentView === 'directories') {
+                        if (state.currentDirectory === collectionName || FK_MAP[Object.keys(DIRECTORIES[state.currentDirectory].fields).find(k => FK_MAP[k])] === collectionName) {
                             renderDirectoryPage();
-                        } else {
-                            renderMainPage();
-                            renderReportsPage();
                         }
+                    } else if (state.currentView === 'main') {
+                        renderMainPage();
+                    } else if (state.currentView === 'reports') {
+                        renderReportsPage();
                     }
+
+                }, (error) => {
+                    console.error(`Error listening to ${collectionName}:`, error);
                 });
                 resolve();
             });
@@ -1325,8 +1305,45 @@
     }
 
     function renderPassengerTable(tripId = 'all') {
-        let passengers = (state.collections.Passengers || []).filter(p => tripId === 'all' || p.TripId === tripId);
-        let enriched = passengers.map(p => {
+        // Get all passengers for the selected trip first
+        let allPassengersForTrip = (state.collections.Passengers || []).filter(p => tripId === 'all' || p.TripId === tripId);
+        let passengersToDisplay = [...allPassengersForTrip];
+
+        // Render the new counter if a specific trip is selected
+        if (tripId !== 'all') {
+            const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+            const bus = trip ? (state.collections.Buses || []).find(b => b.id === trip.BusId) : null;
+            const busCapacity = bus ? bus.Capacity : 0;
+
+            const mainPassengersCount = allPassengersForTrip.filter(p => !p.Place).length;
+            const unconfirmedCount = allPassengersForTrip.filter(p => !p.Status).length;
+            const additionalCount = allPassengersForTrip.filter(p => p.Place).length;
+
+            const mainCountColor = mainPassengersCount > busCapacity ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+
+            tripInfo.innerHTML = `
+                    <span class="cursor-pointer ${mainCountColor}" data-filter="main" title="Основні пасажири">${mainPassengersCount}</span>
+                    <span class="cursor-pointer text-blue-600 font-bold ml-3" data-filter="unconfirmed" title="Не підтверджено">${unconfirmedCount}</span>
+                    <span class="cursor-pointer text-yellow-500 font-bold ml-3" data-filter="additional" title="Додаткові місця">+${additionalCount}</span>
+                    <span class="text-gray-500"> / </span>
+                    <span class="cursor-pointer text-gray-800" data-filter="all" title="Всі пасажири">${busCapacity}</span>
+                `;
+        } else {
+            tripInfo.innerHTML = ''; // Clear when "all" is selected
+        }
+
+        // Apply the current filter to determine which passengers to display
+        if (state.passengerFilter === 'main') {
+            passengersToDisplay = allPassengersForTrip.filter(p => !p.Place);
+        } else if (state.passengerFilter === 'unconfirmed') {
+            passengersToDisplay = allPassengersForTrip.filter(p => !p.Status);
+        } else if (state.passengerFilter === 'additional') {
+            passengersToDisplay = allPassengersForTrip.filter(p => p.Place);
+        }
+        // If filter is 'all', passengersToDisplay remains the full list for the trip
+
+        // --- The rest of the function now uses 'passengersToDisplay' ---
+        let enriched = passengersToDisplay.map(p => {
             const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
             const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
             const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
@@ -1388,7 +1405,6 @@
             const comparison = (String(first)).localeCompare(String(second), undefined, { numeric: true });
             if (comparison !== 0) return comparison * sortDirection;
 
-            // Secondary sort by ClientName
             if (key === 'StationBegin' || key === 'StationEnd') {
                 const nameA = a.ClientName || '';
                 const nameB = b.ClientName || '';
@@ -1400,26 +1416,7 @@
 
         passengersTableHead.querySelectorAll('th[data-sort-key]').forEach(th => th.innerHTML = `${th.textContent.replace(/[▲▼]/g, '').trim()} ${state.passengerSortConfig.key === th.dataset.sortKey ? (state.passengerSortConfig.direction === 'ascending' ? '▲' : '▼') : ''}`);
         passengerDateHeader.style.display = tripId === 'all' ? '' : 'none';
-        if (tripId !== 'all') {
-            const trip = (state.collections.Trips || []).find(t => t.id === tripId);
-            const bus = trip ? (state.collections.Buses || []).find(b => b.id === trip.BusId) : null;
-            const extraPlaces = passengers.filter(p => p.Place).length;
-            const mainPassengers = passengers.length - extraPlaces;
 
-            let infoHTML = '';
-            if (bus) {
-                const passengerCountColor = mainPassengers > bus.Capacity ? 'text-red-600 font-bold' : 'text-gray-800 font-bold';
-                infoHTML += `<span class="${passengerCountColor}">${mainPassengers}</span>`;
-                infoHTML += `<span class="text-gray-500"> / ${bus.Capacity}</span>`;
-                if (extraPlaces > 0) {
-                    infoHTML += ` <span class="text-yellow-500 font-bold">(+${extraPlaces})</span>`;
-                }
-            }
-            tripInfo.innerHTML = infoHTML;
-
-        } else {
-            tripInfo.innerHTML = ''; // Clear when "all" is selected
-        }
         passengersTableBody.innerHTML = enriched.map(p => {
             const dateCell = tripId === 'all' ? `<td class="p-3 text-sm">${p.TripDate ? formatDate(Timestamp.fromMillis(p.TripDate)) : ''}</td>` : '';
             return `
@@ -1643,7 +1640,7 @@
             const group = groupedByStation[stationId];
             tableBodyHTML += `
                     <tr class="group-header-row">
-                        <td colspan="5" style="text-align: right; font-size: 10pt; background-color: #f8f9fa;">
+                        <td colspan="5" style="text-align: right;">
                             ${group.name} <strong>${group.time}</strong>
                         </td>
                     </tr>`;
@@ -2092,6 +2089,7 @@
         const syncTripSelectors = (source) => {
             const selectedId = source.value;
             state.selectedTripId = selectedId;
+            state.passengerFilter = 'all'; // Reset filter on trip change
             const otherSelect = source.id === 'trip-select' ? reportTripSelect : tripSelect;
             if (otherSelect.value !== selectedId) {
                 otherSelect.value = selectedId;
@@ -2099,7 +2097,6 @@
             if (state.currentView === 'main') {
                 renderPassengerTable(selectedId);
             }
-            // Clear report when trip changes on reports page
             if (state.currentView === 'reports') {
                 reportDisplayArea.innerHTML = '';
                 exportExcelBtn.classList.add('hidden');
@@ -2120,12 +2117,24 @@
         exportExcelBtn.addEventListener('click', exportAgentReportToExcel);
         printReportBtn.addEventListener('click', handlePrint);
 
-        document.body.addEventListener('click', e => {
+        // Event listener for filter clicks on the trip info counter
+        tripInfo.addEventListener('click', (e) => {
+            const filterTarget = e.target.closest('[data-filter]');
+            if (filterTarget) {
+                e.preventDefault();
+                state.passengerFilter = filterTarget.dataset.filter;
+                renderPassengerTable(tripSelect.value);
+            }
+        });
+
+        document.body.addEventListener('click', async (e) => {
             const target = e.target.closest('button');
             if (!target) return;
             const { id, name, collection } = target.dataset;
             if (target.matches('.delete-item-btn, .delete-passenger-btn')) {
-                openConfirmModal(`Ви впевнені, що хочете видалити "${name}"?`, () => deleteDoc(doc(db, collection || 'Passengers', id)));
+                openConfirmModal(`Ви впевнені, що хочете видалити "${name}"?`, async () => {
+                    await deleteDoc(doc(db, collection || 'Passengers', id));
+                });
             } else if (target.matches('.status-btn')) {
                 const p = (state.collections.Passengers || []).find(p => p.id === id);
                 if (p) setDoc(doc(db, 'Passengers', id), { Status: !p.Status }, { merge: true });
@@ -2140,7 +2149,6 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Insert') {
-                // Do not open a new modal if one is already open
                 if (modalContainer.children.length > 0) return;
                 e.preventDefault();
                 if (state.currentView === 'directories') {
@@ -2175,4 +2183,3 @@
 </script>
 </body>
 </html>
-

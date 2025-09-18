@@ -152,7 +152,8 @@
                 <div class="flex items-center">
                     <label for="trip-select-input" class="mr-2 font-semibold">Рейс:</label>
                     <div id="trip-select-container" class="relative">
-                        <input type="text" id="trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="off" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
+                        <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                        <input type="text" id="trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
                         <div id="trip-select-results" class="autocomplete-results hidden"></div>
                     </div>
                 </div>
@@ -215,7 +216,8 @@
                         <div class="flex items-center">
                             <label for="report-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
                             <div id="report-trip-select-container" class="relative">
-                                <input type="text" id="report-trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="off" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
+                                <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                                <input type="text" id="report-trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
                                 <div id="report-trip-select-results" class="autocomplete-results hidden"></div>
                             </div>
                         </div>
@@ -402,6 +404,7 @@
         Towns: { title: 'Міста', icon: '🏙️', fields: {Name: 'Назва', CountryId: 'Країна', StationId: 'Вокзал'} },
         Clients: { title: 'Клієнти', icon: '👥', fields: {Name: 'ПІБ', TownIdUA: 'Місто (UA)', StationIdUA: 'Вокзал (UA)', TownIdEU: 'Місто (EU)', StationIdEU: 'Вокзал (EU)', TelUA: 'Тел (UA)', TelEU: 'Тел (EU)', NPNum: '№ НП'} },
         Routes: { title: 'Маршрути', icon: '🗺️', fields: {Cod: 'Код', Name: 'Назва', CountryId: 'Країна', DayOfTheWeek: 'День тижня'} },
+        // ВИДАЛЕНО: Поле 'Cod' з опису колекції 'Trips'
         Trips: { title: 'Рейси', icon: '📅', fields: {Date: 'Дата', RouteId: 'Маршрут', BusId: 'Автобус', DriverId: 'Водій'} }
     };
 
@@ -832,7 +835,8 @@
             if (resultsContainer.classList.contains('hidden') && input.value.trim() === '') {
                 let allItems = [...(state.collections[collectionName] || [])];
                 if (collectionName === 'Trips') {
-                    allItems.sort((a, b) => (b.Date?.seconds || 0) - (a.Date?.seconds || 0));
+                    // ВИПРАВЛЕНО: Змінено сортування списку рейсів за зростанням дати поїздки.
+                    allItems.sort((a, b) => (a.Date?.seconds || 0) - (b.Date?.seconds || 0));
                 }
                 resultsContainer.innerHTML = allItems.length
                     ? allItems.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(null, key, s.id)}</div>`).join('')
@@ -926,7 +930,8 @@
 
             let sourceData = [...(state.collections[collectionName] || [])];
             if (collectionName === 'Trips') {
-                sourceData.sort((a, b) => (b.Date?.seconds || 0) - (a.Date?.seconds || 0));
+                // ВИПРАВЛЕНО: Змінено сортування списку рейсів за зростанням дати поїздки також і для результатів пошуку.
+                sourceData.sort((a, b) => (a.Date?.seconds || 0) - (b.Date?.seconds || 0));
             }
 
 
@@ -1052,7 +1057,8 @@
                 `;
             fieldHTML += `
                      <div class="relative">
-                         <input type="text" id="autocomplete-input-${key}" data-key="${key}" autocomplete="off" value="${currentName}" class="w-full border border-gray-300 rounded-md p-2 pr-10" placeholder="Введіть для пошуку...">
+                         <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                         <input type="text" id="autocomplete-input-${key}" data-key="${key}" autocomplete="new-password" value="${currentName}" class="w-full border border-gray-300 rounded-md p-2 pr-10" placeholder="Введіть для пошуку...">
                          <input type="hidden" name="${key}" value="${value || ''}">
                          ${editIconHTML}
                          <div id="autocomplete-results-${key}" class="autocomplete-results hidden"></div>
@@ -1094,22 +1100,30 @@
         if (collectionName === 'Trips') {
             const routeId = data.RouteId;
             const tripDate = data.Date;
-            if (routeId && tripDate?.seconds) {
-                const route = state.collections.Routes.find(r => r.id === routeId);
-                if (route) {
-                    const date = tripDate.toDate();
-                    const year = String(date.getFullYear()).slice(-2);
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    data.Cod = `${year}${month}${day}${route.Cod}`;
 
-                    const q = query(collection(db, 'Trips'), where("Cod", "==", data.Cod));
-                    const existing = await getDocs(q);
-                    if (!existing.empty && existing.docs[0].id !== itemId) {
-                        return openInfoModal(`Рейс з кодом "${data.Cod}" вже існує!`);
+            if (!routeId || !tripDate) {
+                return openInfoModal("Будь ласка, оберіть маршрут та дату для рейсу.");
+            }
+
+            // ВИДАЛЕНО: Логіка генерації та перевірки унікальності поля 'Cod'.
+            // ДОДАНО: Нова перевірка на унікальність рейсу за комбінацією RouteId та Date.
+            const q = query(collection(db, 'Trips'), where("RouteId", "==", routeId), where("Date", "==", tripDate));
+            const existingTrips = await getDocs(q);
+
+            let isDuplicate = false;
+            if (!existingTrips.empty) {
+                existingTrips.forEach(doc => {
+                    if (doc.id !== itemId) {
+                        isDuplicate = true;
                     }
-                } else { return openInfoModal("Не вдалося знайти маршрут."); }
-            } else { return openInfoModal("Оберіть маршрут та дату."); }
+                });
+            }
+
+            if (isDuplicate) {
+                const routeName = getDisplayValue(null, 'RouteId', routeId);
+                const dateStr = formatDate(tripDate, 'dd.mm.yyyy');
+                return openInfoModal(`Рейс для маршруту "${routeName}" на дату ${dateStr} вже існує.`);
+            }
         }
 
         const checkExisting = async (field, value) => {
@@ -1381,7 +1395,9 @@
                     rowHTML += `<td class="p-3 text-sm">${getDisplayValue(state.currentDirectory, key, item[key])}</td>`;
                 }
             }
-            rowHTML += `<td class="p-3"><button class="edit-item-btn" data-id="${item.id}" data-collection="${state.currentDirectory}">✏️</button><button class="delete-item-btn" data-id="${item.id}" data-name="${item.Name || item.Plate || item.Cod || item.username || ''}" data-collection="${state.currentDirectory}">🗑️</button></td></tr>`;
+            // ВИДАЛЕНО: Поле 'Cod' з data-name для кнопки видалення. Тепер використовується дата.
+            const displayName = item.Name || item.Plate || (item.Date ? formatDate(item.Date) : '') || item.username || '';
+            rowHTML += `<td class="p-3"><button class="edit-item-btn" data-id="${item.id}" data-collection="${state.currentDirectory}">✏️</button><button class="delete-item-btn" data-id="${item.id}" data-name="${displayName}" data-collection="${state.currentDirectory}">🗑️</button></td></tr>`;
             return rowHTML;
         }).join('');
 
@@ -1398,6 +1414,11 @@
             if (key === 'TripId') {
                 const route = state.collections.Routes?.find(r => r.id === refItem.RouteId);
                 return `${refItem.Date ? formatDate(refItem.Date, 'dd.mm.yy') : 'N/A'} - ${route?.Name || '...'}`;
+            }
+            // ДОДАНО: Спеціальна логіка для відображення інформації про автобус.
+            // Тепер в таблиці рейсів буде виводитись номерний знак та назва автобуса.
+            if (key === 'BusId') {
+                return `${refItem.Plate || ''} - ${refItem.Name || ''}`;
             }
             return refItem.Name || refItem.Plate || refItem.Cod || refItem.username || 'N/A';
         }
@@ -2542,4 +2563,3 @@
 </script>
 </body>
 </html>
-

@@ -1,0 +1,2565 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passenger Booking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/css/datepicker.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker-full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/locales/uk.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 90%;
+            max-width: 600px;
+        }
+        .autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            max-height: 400px; /* Increased height for up to 10 items */
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .autocomplete-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .autocomplete-item:hover, .autocomplete-active {
+            background-color: #dbeafe;
+        }
+        #passengers-table-head th, #directory-table-container th {
+            cursor: pointer;
+        }
+        /* Styles for report display */
+        #report-display-area {
+            font-family: 'Inter', sans-serif;
+            padding: 20px;
+            color: #000;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+        #report-display-area .report-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            font-size: 11pt;
+        }
+        #report-display-area table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #report-display-area th, #report-display-area td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        #report-display-area th {
+            background-color: #f2f2f2;
+        }
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
+        .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
+        .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
+
+        .departure-report-table tr.group-header-row td { font-size: 9pt; font-weight: normal; }
+        .departure-report-table td { font-size: 9pt; }
+        .departure-report-table td.passenger-name-cell {
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            font-size: 10pt;
+        }
+        .departure-report-table td.phones-cell { width: 1%; white-space: nowrap; }
+
+        /* Remove arrows from number inputs */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+            appearance: none;
+        }
+        /* Visually hide content while keeping it accessible to screen readers */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<span id="width-calculator" class="absolute invisible whitespace-nowrap p-2" style="font-family: 'Inter', sans-serif; font-size: 1rem;"></span>
+
+<div id="auth-overlay" class="fixed inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-[100]">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-xl font-semibold mb-2">Підключення...</h2>
+        <p id="auth-status-text" class="text-gray-600">Ініціалізація та автентифікація...</p>
+    </div>
+</div>
+
+<div id="app-view" class="hidden">
+    <header class="bg-white shadow-md relative overflow-hidden">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center relative" style="z-index: 2;">
+            <h1 id="home-link" class="text-xl font-bold text-gray-700 cursor-pointer">
+                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.8</span>
+            </h1>
+            <nav>
+                <button data-view="main" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Головна</button>
+                <button data-view="directories" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Довідники</button>
+                <button data-view="reports" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">Звіти</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" class="container mx-auto p-4">
+        <div id="main-page-view">
+            <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center">
+                    <label for="trip-select-input" class="mr-2 font-semibold">Рейс:</label>
+                    <div id="trip-select-container" class="relative">
+                        <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                        <input type="text" id="trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
+                        <div id="trip-select-results" class="autocomplete-results hidden"></div>
+                    </div>
+                </div>
+                <!-- ВИПРАВЛЕНО: Додано label для доступності -->
+                <label for="passenger-search-input" class="sr-only">Пошук пасажира</label>
+                <input type="text" id="passenger-search-input" placeholder="Пошук пасажира (F7)..." class="w-full sm:w-auto flex-grow p-2 border border-gray-300 rounded-md">
+                <div id="trip-info" class="text-lg font-bold"></div>
+                <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Додати пасажира</button>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead id="passengers-table-head" class="bg-gray-50 border-b-2 border-gray-200">
+                    <tr>
+                        <th id="passenger-date-header" data-sort-key="TripDate" class="p-3 text-sm font-semibold tracking-wide">Дата поїздки</th>
+                        <th data-sort-key="ClientName" class="p-3 text-sm font-semibold tracking-wide">Ім'я клієнта</th>
+                        <th data-sort-key="StationBegin" class="p-3 text-sm font-semibold tracking-wide">Пункт відправлення</th>
+                        <th data-sort-key="StationEnd" class="p-3 text-sm font-semibold tracking-wide">Пункт прибуття</th>
+                        <th data-sort-key="Note" class="p-3 text-sm font-semibold tracking-wide">Примітка</th>
+                        <th class="p-3 text-sm font-semibold tracking-wide">Дії</th>
+                    </tr>
+                    </thead>
+                    <tbody id="passengers-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="directories-page-view" class="hidden">
+            <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                <div id="directory-tabs" class="flex flex-wrap gap-2 border-b border-gray-200 pb-2 mb-4">
+                </div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="directory-title" class="text-2xl font-bold"></h2>
+                    <div class="flex items-center gap-4 flex-grow mx-4">
+                        <div id="station-filter-container" class="items-center hidden">
+                            <label for="station-country-filter" class="mr-2 text-sm font-medium">Країна:</label>
+                            <select id="station-country-filter" class="p-2 border border-gray-300 rounded-md"></select>
+                        </div>
+                        <!-- ВИПРАВЛЕНО: Додано label для доступності -->
+                        <label for="directory-search-input" class="sr-only">Пошук у довіднику</label>
+                        <input type="text" id="directory-search-input" placeholder="Пошук..." class="w-full p-2 border border-gray-300 rounded-md">
+                    </div>
+                    <button id="add-directory-item-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0">Додати запис</button>
+                </div>
+                <div id="directory-table-container" class="overflow-x-auto">
+                </div>
+            </div>
+        </div>
+
+        <div id="reports-page-view" class="hidden">
+            <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                <div class="flex border-b mb-4">
+                    <button id="report-type-trip" class="report-type-btn py-2 px-4 border-b-2 border-blue-500 text-blue-600 font-semibold">Звіти по рейсах</button>
+                    <button id="report-type-agent" class="report-type-btn py-2 px-4 text-gray-500 hover:text-gray-700">Звіт по агентах</button>
+                </div>
+
+                <div id="trip-reports-section">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <div class="flex items-center">
+                            <label for="report-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
+                            <div id="report-trip-select-container" class="relative">
+                                <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                                <input type="text" id="report-trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук..." style="width: 250px;">
+                                <div id="report-trip-select-results" class="autocomplete-results hidden"></div>
+                            </div>
+                        </div>
+                        <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+                                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/>
+                            </svg>
+                            <span>Друк</span>
+                        </button>
+                    </div>
+                    <div id="report-buttons" class="flex flex-wrap gap-2 items-center">
+                        <button id="generate-call-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Обзвон</button>
+                        <button id="generate-departure-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Відправка</button>
+                        <button id="generate-arrival-list-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Прибуття</button>
+                        <button id="generate-transit-list-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Транзит</button>
+                    </div>
+                </div>
+
+                <div id="agent-report-section" class="hidden">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div>
+                            <label for="agent-filter-select" class="text-sm font-medium">Агент:</label>
+                            <select id="agent-filter-select" class="p-2 border border-gray-300 rounded-md"></select>
+                        </div>
+                        <div>
+                            <label for="start-date-filter" class="text-sm font-medium">З:</label>
+                            <input type="text" id="start-date-filter" class="p-2 border border-gray-300 rounded-md w-32 date-input-mask" placeholder="дд.мм.рр">
+                        </div>
+                        <div>
+                            <label for="end-date-filter" class="text-sm font-medium">По:</label>
+                            <input type="text" id="end-date-filter" class="p-2 border border-gray-300 rounded-md w-32 date-input-mask" placeholder="дд.мм.рр">
+                        </div>
+                        <button id="generate-agent-report-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg self-end">Сформувати</button>
+                        <button id="export-excel-btn" class="hidden ml-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-excel" viewBox="0 0 16 16">
+                                <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.64L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/>
+                                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                            </svg>
+                            <span>Export Excel</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="report-display-area" class="mt-6 border-t border-gray-200 pt-4">
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="modal-container"></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+        getFirestore,
+        collection,
+        doc,
+        setDoc,
+        addDoc,
+        deleteDoc,
+        query,
+        onSnapshot,
+        Timestamp,
+        getDocs,
+        where
+        // ВИПРАВЛЕНО: Видалено невикористаний імпорт 'limit'
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyB5ZUtQpehwlwXMWTcP-DtzSLxRRDud054",
+        authDomain: "passenger-booking-system-1212.firebaseapp.com",
+        projectId: "passenger-booking-system-1212",
+        storageBucket: "passenger-booking-system-1212.appspot.com",
+        messagingSenderId: "541629107617",
+        appId: "1:541629107617:web:75534810970836cc1f8fe0",
+        measurementId: "G-JPSBQXPQ54"
+    };
+
+    // --- UI ELEMENTS ---
+    const authOverlay = document.getElementById('auth-overlay');
+    const authStatusText = document.getElementById('auth-status-text');
+    const appView = document.getElementById('app-view');
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const mainPageView = document.getElementById('main-page-view');
+    const directoriesPageView = document.getElementById('directories-page-view');
+    const reportsPageView = document.getElementById('reports-page-view');
+    const directoryTabsContainer = document.getElementById('directory-tabs');
+    const directoryTitle = document.getElementById('directory-title');
+    const addDirectoryItemBtn = document.getElementById('add-directory-item-btn');
+    const directorySearchInput = document.getElementById('directory-search-input');
+    const directoryTableContainer = document.getElementById('directory-table-container');
+    const passengerSearchInput = document.getElementById('passenger-search-input');
+    const tripInfo = document.getElementById('trip-info');
+    const passengersTableBody = document.getElementById('passengers-table-body');
+    const passengersTableHead = document.getElementById('passengers-table-head');
+    const passengerDateHeader = document.getElementById('passenger-date-header');
+    const addPassengerBtn = document.getElementById('add-passenger-btn');
+    const modalContainer = document.getElementById('modal-container');
+    const generateCallListBtn = document.getElementById('generate-call-list-btn');
+    const generateDepartureListBtn = document.getElementById('generate-departure-list-btn');
+    const generateArrivalListBtn = document.getElementById('generate-arrival-list-btn');
+    const generateTransitListBtn = document.getElementById('generate-transit-list-btn');
+    const generateAgentReportBtn = document.getElementById('generate-agent-report-btn');
+    const reportDisplayArea = document.getElementById('report-display-area');
+    const exportExcelBtn = document.getElementById('export-excel-btn');
+    const printReportBtn = document.getElementById('print-report-btn');
+    const homeLink = document.getElementById('home-link');
+    const reportTypeTripBtn = document.getElementById('report-type-trip');
+    const reportTypeAgentBtn = document.getElementById('report-type-agent');
+    const tripReportsSection = document.getElementById('trip-reports-section');
+    const agentReportSection = document.getElementById('agent-report-section');
+
+    // --- FIREBASE INITIALIZATION ---
+    let db;
+    try {
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        db = getFirestore(app);
+
+        // --- AUTHENTICATION LOGIC ---
+        const authenticateUser = async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Authentication Error:", error);
+                if (error.code === 'auth/admin-restricted-operation') {
+                    authStatusText.innerHTML = `<b>Помилка:</b> Анонімний вхід вимкнено. <br/><br/> Будь ласка, увімкніть його в налаштуваннях вашого проєкту Firebase: <br/> Authentication -> Sign-in method -> Anonymous -> Enable.`;
+                } else if (error.code === 'auth/api-key-not-valid') {
+                    authStatusText.innerHTML = `<b>Помилка:</b> Недійсний ключ API. <br/><br/>Будь ласка, перевірте конфігурацію Firebase у вашому коді.`;
+                }
+                else {
+                    authStatusText.textContent = `Помилка автентифікації: ${error.message}`;
+                }
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                authStatusText.textContent = 'Автентифікація успішна. Завантаження даних...';
+                await initializeAppLogic();
+                authOverlay.classList.add('hidden');
+                appView.classList.remove('hidden');
+            } else {
+                authOverlay.classList.remove('hidden');
+                appView.classList.add('hidden');
+            }
+        });
+
+        authenticateUser();
+
+    } catch (e) {
+        console.error("Initialization Error:", e);
+        authStatusText.textContent = `Помилка ініціалізації: ${e.message}`;
+    }
+
+    // --- APPLICATION STATE ---
+    const state = {
+        currentView: 'main',
+        currentDirectory: 'Buses',
+        collections: {},
+        listeners: {},
+        directorySortConfig: { key: 'Plate', direction: 'ascending' },
+        passengerSortConfig: { key: 'ClientName', direction: 'ascending' },
+        directorySearchTerm: '',
+        passengerSearchTerm: '',
+        stationCountryFilter: 'all',
+        selectedTripId: null,
+        lastAgentReportData: [],
+        currentReportType: 'trip',
+        passengerFilter: 'all' // 'all', 'main', 'unconfirmed', 'additional'
+    };
+
+    const DIRECTORIES = {
+        Users: { title: 'Users', icon: '👤', fields: {username: 'Ім\'я користувача', GoogleAccount: 'Google Account', password: 'Пароль'} },
+        Agents: { title: 'Агенти', icon: '🧑‍💼', fields: {Name: 'Назва агента'} },
+        Buses: { title: 'Автобуси', icon: '🚌', fields: {Plate: 'Номерний знак', Name: 'Модель', Capacity: 'Місткість'} },
+        Drivers: { title: 'Водії', icon: '👨‍✈️', fields: {Name: 'ПІБ'} },
+        Country: { title: 'Країни', icon: '🌍', fields: {Cod: 'Код', Name: 'Назва', ISO: 'ISO'} },
+        Stations: { title: 'Вокзали', icon: '🏢', fields: {Name: 'Назва', Cod: 'Код', CountryId: 'Країна', TimeBegin: 'Час відпр.', TimeEnd: 'Час приб.'} },
+        Towns: { title: 'Міста', icon: '🏙️', fields: {Name: 'Назва', CountryId: 'Країна', StationId: 'Вокзал'} },
+        Clients: { title: 'Клієнти', icon: '👥', fields: {Name: 'ПІБ', TownIdUA: 'Місто (UA)', StationIdUA: 'Вокзал (UA)', TownIdEU: 'Місто (EU)', StationIdEU: 'Вокзал (EU)', TelUA: 'Тел (UA)', TelEU: 'Тел (EU)', NPNum: '№ НП'} },
+        Routes: { title: 'Маршрути', icon: '🗺️', fields: {Cod: 'Код', Name: 'Назва', CountryId: 'Країна', DayOfTheWeek: 'День тижня'} },
+        // ВИДАЛЕНО: Поле 'Cod' з опису колекції 'Trips'
+        Trips: { title: 'Рейси', icon: '📅', fields: {Date: 'Дата', RouteId: 'Маршрут', BusId: 'Автобус', DriverId: 'Водій'} }
+    };
+
+    const PASSENGER_FIELDS = {
+        AgentId: 'Агент',
+        TripId: 'Рейс',
+        ClientId: 'Клієнт',
+        Note: 'Примітка'
+    };
+
+    const DEFAULT_SORT_CONFIG = {
+        Users: { key: 'username', direction: 'ascending' },
+        Agents: { key: 'Name', direction: 'ascending' },
+        Buses: { key: 'Plate', direction: 'ascending' },
+        Drivers: { key: 'Name', direction: 'ascending' },
+        Country: { key: 'Cod', direction: 'ascending' },
+        Stations: { key: 'Cod', direction: 'ascending' },
+        Towns: { key: 'Name', direction: 'ascending' },
+        Clients: { key: 'Name', direction: 'ascending' },
+        Routes: { key: 'Cod', direction: 'ascending' },
+        Trips: { key: 'Date', direction: 'ascending' }
+    };
+
+    const DAY_OF_WEEK_MAP = { "Неділя": 0, "Понеділок": 1, "Вівторок": 2, "Середа": 3, "Четвер": 4, "П'ятниця": 5, "Субота": 6 };
+
+    const FK_MAP = {
+        AgentId: 'Agents',
+        CountryId: 'Country', StationId: 'Stations', TownIdUA: 'Towns', StationIdUA: 'Stations',
+        TownIdEU: 'Towns', StationIdEU: 'Stations', RouteId: 'Routes', BusId: 'Buses',
+        DriverId: 'Drivers', TripId: 'Trips', ClientId: 'Clients'
+    };
+
+    // --- HELPERS ---
+    function formatDate(timestamp, format = 'dd.mm.yy') {
+        if (!timestamp || !timestamp.seconds) return 'N/A';
+        const date = timestamp.toDate();
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        if (format === 'dd.mm.yy') {
+            return `${day}.${month}.${String(year).slice(-2)}`;
+        }
+        if (format === 'dd.mm.yyyy') {
+            return `${day}.${month}.${year}`;
+        }
+        return `${day}.${month}.${year}`;
+    }
+
+    function parseDateString(dateStr) {
+        if (!dateStr || (!/^\d{2}\.\d{2}\.\d{2}$/.test(dateStr) && !/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr))) return null;
+        const parts = dateStr.split('.');
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        let year = parseInt(parts[2], 10);
+        if (year < 100) year += 2000;
+
+        const date = new Date(Date.UTC(year, month, day));
+        if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+            return date;
+        }
+        return null;
+    }
+
+    // --- MODAL LOGIC ---
+    function openInfoModal(message) {
+        const modalHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content max-w-sm">
+                    <h3 class="text-lg font-medium mb-4">Інформація</h3>
+                    <p class="text-gray-600 mb-6">${message}</p>
+                    <div class="flex justify-end">
+                        <button class="modal-close-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">OK</button>
+                    </div>
+                </div>
+            </div>`;
+        modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+        const newModal = modalContainer.lastElementChild;
+        setupModal(newModal);
+    }
+
+    function openConfirmModal(message, onConfirm) {
+        const modalHTML = `
+                <div class="modal-overlay">
+                    <div class="modal-content max-w-sm">
+                        <h3 class="text-lg font-medium mb-4">Підтвердження дії</h3>
+                        <p class="text-gray-600 mb-6">${message}</p>
+                        <div class="flex justify-end">
+                            <button class="modal-close-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2">Ні</button>
+                            <button id="confirm-ok-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Так</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+
+        const newModal = modalContainer.lastElementChild;
+        const okBtn = newModal.querySelector('#confirm-ok-btn');
+
+        okBtn.addEventListener('click', () => {
+            onConfirm();
+            newModal.remove();
+        });
+        setupModal(newModal);
+    }
+
+    function openDirectoryModal(collectionName, itemId = null, defaults = {}, onSaveCallback = null) {
+        const directory = DIRECTORIES[collectionName];
+        const isEditing = itemId !== null;
+        let item = {};
+
+        if (isEditing) {
+            item = (state.collections[collectionName] || []).find(i => i.id === itemId) || {};
+        } else {
+            item = { ...defaults };
+            if ((collectionName === 'Stations' || collectionName === 'Towns') && !item.CountryId) {
+                const ukraine = (state.collections.Country || []).find(c => c.Cod === 0);
+                if (ukraine) item.CountryId = ukraine.id;
+            }
+        }
+
+        const title = `${isEditing ? 'Редагувати' : 'Додати'} ${directory.title.slice(0, -1).toLowerCase()}`;
+        const formFieldsHTML = Object.keys(directory.fields).map(key => generateFormField(key, item[key] || '', collectionName)).join('');
+
+        const modalHTML = `<div class="modal-overlay"><div class="modal-content"><form><h2 class="text-2xl font-bold mb-6">${title}</h2><div class="space-y-4">${formFieldsHTML}</div><div class="flex justify-end mt-6"><button type="button" class="modal-close-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2">Скасувати</button><button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Зберегти</button></div></form></div></div>`;
+        modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+
+        const newModal = modalContainer.lastElementChild;
+        const form = newModal.querySelector('form');
+        setupModal(newModal, (e) => handleDirectoryFormSubmit(e, collectionName, itemId, onSaveCallback));
+
+        // Setup autocomplete for all FK fields in the modal
+        for (const key in directory.fields) {
+            if (FK_MAP[key]) {
+                setupAutocomplete(form, key, FK_MAP[key]);
+            }
+        }
+
+        // Show edit buttons for pre-filled fields
+        const allHiddenInputs = form.querySelectorAll('input[type="hidden"]');
+        allHiddenInputs.forEach(hidden => {
+            if (hidden.value) {
+                const key = hidden.name;
+                const editBtn = form.querySelector(`#edit-btn-${key}`);
+                if (editBtn) editBtn.classList.remove('hidden');
+            }
+        });
+
+        // Smart country default for Stations and Towns
+        if (collectionName === 'Stations' || collectionName === 'Towns') {
+            const nameInput = form.querySelector('input[name="Name"]');
+            const countryAutocompleteInput = form.querySelector('#autocomplete-input-CountryId');
+            const countryHiddenInput = form.querySelector('input[name="CountryId"]');
+            let userSelectedCountry = !!countryHiddenInput.value;
+
+            countryAutocompleteInput.addEventListener('change', () => userSelectedCountry = true);
+
+            if (nameInput && countryAutocompleteInput && countryHiddenInput) {
+                nameInput.addEventListener('input', () => {
+                    if (userSelectedCountry) return;
+
+                    const hasLatinChars = /[a-zA-Z]/.test(nameInput.value);
+                    if (hasLatinChars) {
+                        const italy = (state.collections.Country || []).find(c => c.Name === 'Italia');
+                        if (italy) {
+                            countryHiddenInput.value = italy.id;
+                            countryAutocompleteInput.value = italy.Name;
+                        }
+                    } else {
+                        const ukraine = (state.collections.Country || []).find(c => c.Cod === 0);
+                        if (ukraine) {
+                            countryHiddenInput.value = ukraine.id;
+                            countryAutocompleteInput.value = ukraine.Name;
+                        }
+                    }
+                });
+            }
+        }
+
+        // Time masking for Stations modal
+        if (collectionName === 'Stations') {
+            const timeInputs = form.querySelectorAll('.time-input');
+            timeInputs.forEach(input => {
+                // Add input masking for hh:mm format
+                input.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value.length > 2) {
+                        value = value.substring(0, 2) + ':' + value.substring(2, 4);
+                    }
+                    e.target.value = value;
+                });
+
+                input.addEventListener('blur', (e) => {
+                    const value = e.target.value;
+                    if (!value || /^\d{2}:\d{2}$/.test(value)) return;
+                    let [hours, minutes] = value.split(':');
+                    if (parseInt(hours, 10) > 23 || parseInt(minutes, 10) > 59) {
+                        e.target.value = ''; // Clear invalid time
+                    }
+                });
+            });
+        }
+
+        if (collectionName === 'Trips') {
+            const dateInput = form.querySelector('input[name="Date"]');
+            let datepicker;
+
+            const updateAvailableDates = () => {
+                const selectedRouteId = form.querySelector('input[name="RouteId"]').value;
+                if (!selectedRouteId) {
+                    if (datepicker) datepicker.destroy();
+                    datepicker = new Datepicker(dateInput, { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+                    return;
+                }
+
+                const route = state.collections.Routes.find(r => r.id === selectedRouteId);
+                if (!route || !route.DayOfTheWeek) return;
+
+                const existingTripsForRoute = (state.collections.Trips || []).filter(trip => trip.RouteId === selectedRouteId && trip.id !== itemId);
+                const disabledDates = existingTripsForRoute.map(trip => trip.Date?.toDate()).filter(Boolean);
+                const requiredDay = DAY_OF_WEEK_MAP[route.DayOfTheWeek];
+
+                if (datepicker) datepicker.destroy();
+                datepicker = new Datepicker(dateInput, {
+                    format: 'dd.mm.yy', autohide: true, language: 'uk',
+                    daysOfWeekDisabled: [0,1,2,3,4,5,6].filter(d => d !== requiredDay),
+                    weekStart: 1, datesDisabled: disabledDates
+                });
+            };
+
+            const routeObserver = new MutationObserver(updateAvailableDates);
+            routeObserver.observe(form.querySelector('input[name="RouteId"]'), { attributes: true, attributeFilter: ['value'] });
+
+            updateAvailableDates();
+        }
+    }
+
+    function openPassengerModal(passengerId = null) {
+        const isEditing = passengerId !== null;
+        const passenger = isEditing ? (state.collections.Passengers || []).find(p => p.id === passengerId) : {};
+        const title = isEditing ? 'Редагувати' : 'Додати пасажира';
+
+        const formFieldsHTML = Object.keys(PASSENGER_FIELDS).map(key => generateFormField(key, passenger?.[key] || '', 'Passengers')).join('');
+
+        const modalHTML = `<div class="modal-overlay"><div class="modal-content"><form><h2 class="text-2xl font-bold mb-6">${title}</h2><div class="space-y-4">
+                ${formFieldsHTML}
+
+                <div id="client-info-display" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 space-y-1 hidden"></div>
+
+                <div class="flex items-center space-x-4"><label class="flex items-center"><input type="checkbox" name="Ticket" class="h-4 w-4" ${passenger?.Ticket ? 'checked' : ''}><span class="ml-2">Квиток</span></label><label class="flex items-center"><input type="checkbox" name="Status" class="h-4 w-4" ${passenger?.Status ? 'checked' : ''}><span class="ml-2">Підтверджено</span></label><label class="flex items-center"><input type="checkbox" name="Place" class="h-4 w-4" ${passenger?.Place ? 'checked' : ''}><span class="ml-2">Додаткове місце</span></label></div></div><div class="flex justify-end mt-6"><button type="button" class="modal-close-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2">Скасувати</button><button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Зберегти</button></div></form></div></div>`;
+        modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+
+        const newModal = modalContainer.lastElementChild;
+        const form = newModal.querySelector('form');
+        if (!isEditing && state.selectedTripId && state.selectedTripId !== 'all') {
+            form.querySelector('input[name="TripId"]').value = state.selectedTripId;
+            form.querySelector(`[data-key="TripId"]`).value = getDisplayValue('Passengers', 'TripId', state.selectedTripId);
+        }
+
+        let focusTargetKey;
+        if (isEditing) {
+            focusTargetKey = 'ClientId';
+        } else {
+            if (state.currentView === 'main' && !state.selectedTripId) {
+                focusTargetKey = 'TripId';
+            } else {
+                focusTargetKey = 'ClientId';
+            }
+        }
+
+        setupModal(newModal, (e) => handlePassengerFormSubmit(e, passengerId), `autocomplete-input-${focusTargetKey}`);
+
+        for (const key in PASSENGER_FIELDS) {
+            if (FK_MAP[key]) {
+                setupAutocomplete(form, key, FK_MAP[key]);
+            }
+        }
+
+        const allHiddenInputs = form.querySelectorAll('input[type="hidden"]');
+        allHiddenInputs.forEach(hidden => {
+            if (hidden.value) {
+                const key = hidden.name;
+                const editBtn = form.querySelector(`#edit-btn-${key}`);
+                if (editBtn) editBtn.classList.remove('hidden');
+            }
+        });
+
+        // Logic for updating the client info block
+        const clientHiddenInput = form.querySelector('input[name="ClientId"]');
+        if(clientHiddenInput) {
+            // Show data immediately if editing
+            if (clientHiddenInput.value) {
+                updateClientInfoDisplay(clientHiddenInput.value, newModal);
+            }
+            // Add listener to update when a new client is selected
+            const observer = new MutationObserver((mutationsList) => {
+                for(const mutation of mutationsList) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                        updateClientInfoDisplay(mutation.target.value, newModal);
+                    }
+                }
+            });
+            observer.observe(clientHiddenInput, { attributes: true });
+        }
+    }
+
+    function updateClientInfoDisplay(clientId, scopeElement) {
+        const infoDisplay = scopeElement.querySelector('#client-info-display');
+        if (!infoDisplay) return;
+
+        if (!clientId) {
+            infoDisplay.innerHTML = '';
+            infoDisplay.classList.add('hidden');
+            return;
+        }
+
+        const client = (state.collections.Clients || []).find(c => c.id === clientId);
+        if (!client) {
+            infoDisplay.innerHTML = '';
+            infoDisplay.classList.add('hidden');
+            return;
+        }
+
+        const townUa = getDisplayValue('Clients', 'TownIdUA', client.TownIdUA);
+        const stationUa = getDisplayValue('Clients', 'StationIdUA', client.StationIdUA);
+        const townEu = getDisplayValue('Clients', 'TownIdEU', client.TownIdEU);
+        const stationEu = getDisplayValue('Clients', 'StationIdEU', client.StationIdEU);
+        const telUa = client.TelUA ? `+38${client.TelUA}` : '';
+        const telEu = client.TelEU ? `+39${client.TelEU}` : '';
+        const npNum = client.NPNum || '—';
+
+        // ВИПРАВЛЕНО: Спрощено присвоєння innerHTML, видалено зайву змінну
+        infoDisplay.innerHTML = `
+                <div><strong>UA:</strong> ${townUa} / ${stationUa} | <strong>Тел:</strong> ${telUa}</div>
+                <div><strong>EU:</strong> ${townEu} / ${stationEu} | <strong>Тел:</strong> ${telEu}</div>
+                <div><strong>Нова Пошта:</strong> ${npNum}</div>
+            `;
+        infoDisplay.classList.remove('hidden');
+    }
+
+    function setupModal(modalElement, submitHandler, focusTargetId = null) {
+        const form = modalElement.querySelector('form');
+        if(submitHandler && form) {
+            form.addEventListener('submit', submitHandler);
+        }
+        modalElement.querySelectorAll('.modal-close-btn').forEach(btn => {
+            btn.addEventListener('click', () => modalElement.remove());
+        });
+
+
+        const focusableElements = 'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select, button';
+        const focusableContent = Array.from(modalElement.querySelectorAll(focusableElements));
+        const firstFocusableElement = focusableContent[0];
+        const lastFocusableElement = focusableContent[focusableContent.length - 1];
+
+        setTimeout(() => {
+            const focusElement = focusTargetId ? modalElement.querySelector(`#${focusTargetId}`) : null;
+            const elementToFocus = focusElement || firstFocusableElement;
+            if (elementToFocus) {
+                elementToFocus.focus();
+                if (typeof elementToFocus.select === 'function') {
+                    elementToFocus.select();
+                }
+            }
+        }, 50);
+
+        modalElement.addEventListener('keydown', (e) => {
+            const activeAutocomplete = modalElement.querySelector('.autocomplete-results:not(.hidden)');
+
+            // Close on Escape if no autocomplete list is active
+            if (e.key === 'Escape' && !activeAutocomplete) {
+                e.preventDefault();
+                modalElement.remove();
+                return;
+            }
+
+            // Handle Tab for focus trapping
+            if (e.key === 'Tab') {
+                if (e.shiftKey) { // Shift + Tab
+                    if (document.activeElement === firstFocusableElement) {
+                        lastFocusableElement.focus();
+                        e.preventDefault();
+                    }
+                } else { // Tab
+                    if (document.activeElement === lastFocusableElement) {
+                        firstFocusableElement.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+
+            // Submit on Enter in last field, or move to next
+            if (e.key === 'Enter' && !e.shiftKey && form && !activeAutocomplete) {
+                const currentElement = document.activeElement;
+                if (currentElement.tagName === 'BUTTON' && currentElement.type !== 'submit') {
+                    return; // Do nothing if Enter is pressed on a non-submit button
+                }
+
+                e.preventDefault();
+                const inputElements = focusableContent.filter(el => el.tagName !== 'BUTTON');
+                const lastInputElement = inputElements[inputElements.length - 1];
+
+                if (currentElement === lastInputElement || currentElement.type === 'submit') {
+                    form.requestSubmit();
+                } else {
+                    const currentIndex = focusableContent.indexOf(currentElement);
+                    const nextElement = focusableContent[currentIndex + 1];
+                    nextElement?.focus();
+                }
+            }
+        });
+    }
+
+    function setupAutocomplete(modalScope, key, collectionName) {
+        const input = modalScope.querySelector(`#autocomplete-input-${key}`);
+        const hiddenInput = modalScope.querySelector(`input[name="${key}"]`);
+        const resultsContainer = modalScope.querySelector(`#autocomplete-results-${key}`);
+        const editBtn = modalScope.querySelector(`#edit-btn-${key}`);
+        if (!input || !hiddenInput || !resultsContainer) return;
+
+        let activeIndex = -1;
+
+        input.addEventListener('focus', () => {
+            input.select();
+        });
+
+        const showFullList = () => {
+            if (resultsContainer.classList.contains('hidden') && input.value.trim() === '') {
+                let allItems = [...(state.collections[collectionName] || [])];
+                if (collectionName === 'Trips') {
+                    // ВИПРАВЛЕНО: Змінено сортування списку рейсів за зростанням дати поїздки.
+                    allItems.sort((a, b) => (a.Date?.seconds || 0) - (b.Date?.seconds || 0));
+                }
+                resultsContainer.innerHTML = allItems.length
+                    ? allItems.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(null, key, s.id)}</div>`).join('')
+                    : '<div class="p-2 text-gray-500">Немає записів. ↓ для створення</div>';
+                resultsContainer.classList.remove('hidden');
+                activeIndex = 0;
+                setActiveItem();
+            }
+        };
+
+
+        const setActiveItem = () => {
+            const items = resultsContainer.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => item.classList.toggle('autocomplete-active', index === activeIndex));
+        };
+
+        const moveToNextField = () => {
+            const allFocusable = Array.from(modalScope.querySelectorAll('input:not([type=hidden]), textarea'));
+            let currentIndex = allFocusable.indexOf(input);
+            let nextElement = allFocusable[currentIndex + 1];
+
+            // Skip auto-filled station field in Client form
+            if (input.id.startsWith('autocomplete-input-TownId') && nextElement && nextElement.id.startsWith('autocomplete-input-StationId')) {
+                if (nextElement.value && nextElement.value !== '—') {
+                    nextElement = allFocusable[currentIndex + 2];
+                }
+            }
+
+            if (nextElement) {
+                nextElement.focus();
+                if (typeof nextElement.select === 'function') {
+                    nextElement.select();
+                }
+            } else {
+                modalScope.querySelector('button[type="submit"]')?.focus();
+            }
+        };
+
+        const onSelect = (id, name) => {
+            input.value = name;
+            hiddenInput.value = id;
+            // Manually trigger the mutation observer for client info block
+            const event = new Event('change', { bubbles: true });
+            hiddenInput.dispatchEvent(event);
+            resultsContainer.classList.add('hidden');
+            activeIndex = -1;
+            if(editBtn) editBtn.classList.remove('hidden');
+
+            // New logic for auto-filling station
+            if (collectionName === 'Towns') {
+                const town = (state.collections.Towns || []).find(t => t.id === id);
+                if (town && town.StationId) {
+                    const station = (state.collections.Stations || []).find(s => s.id === town.StationId);
+                    if (station) {
+                        const form = input.closest('form');
+                        let stationKey;
+
+                        if (key === 'TownIdUA') stationKey = 'StationIdUA';
+                        else if (key === 'TownIdEU') stationKey = 'StationIdEU';
+                        else if (key === 'TownId') stationKey = 'StationId';
+
+                        if (stationKey && form) {
+                            const stationHiddenInput = form.querySelector(`input[name="${stationKey}"]`);
+                            const stationVisibleInput = form.querySelector(`#autocomplete-input-${stationKey}`);
+
+                            if (stationHiddenInput && stationVisibleInput) {
+                                stationHiddenInput.value = station.id;
+                                stationVisibleInput.value = station.Name;
+                                const stationEditBtn = form.querySelector(`#edit-btn-${stationKey}`);
+                                if(stationEditBtn) stationEditBtn.classList.remove('hidden');
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        input.addEventListener('input', () => {
+            const searchTerm = input.value.toLowerCase();
+            hiddenInput.value = '';
+            // Manually trigger the mutation observer to clear the info block
+            const event = new Event('change', { bubbles: true });
+            hiddenInput.dispatchEvent(event);
+            if(editBtn) editBtn.classList.add('hidden');
+            activeIndex = -1;
+            if (searchTerm.length < 1) {
+                resultsContainer.innerHTML = '';
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            let sourceData = [...(state.collections[collectionName] || [])];
+            if (collectionName === 'Trips') {
+                // ВИПРАВЛЕНО: Змінено сортування списку рейсів за зростанням дати поїздки також і для результатів пошуку.
+                sourceData.sort((a, b) => (a.Date?.seconds || 0) - (b.Date?.seconds || 0));
+            }
+
+
+            const filtered = sourceData.filter(item => getDisplayValue(null, key, item.id).toLowerCase().includes(searchTerm));
+
+            resultsContainer.innerHTML = filtered.length
+                ? filtered.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(null, key, s.id)}</div>`).join('')
+                : '<div class="p-2 text-gray-500">Не знайдено. ↓ для створення</div>';
+            resultsContainer.classList.remove('hidden');
+        });
+
+        input.addEventListener('keydown', e => {
+            const items = resultsContainer.querySelectorAll('.autocomplete-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+
+                if (resultsContainer.classList.contains('hidden') && input.value.trim() === '') {
+                    showFullList();
+                    return;
+                }
+
+                if (items.length > 0 && activeIndex < items.length - 1) {
+                    activeIndex++;
+                    setActiveItem();
+                } else { // Handles end of list or empty list (after typing)
+                    resultsContainer.classList.add('hidden');
+                    const currentValue = input.value.trim();
+                    const existingItem = (state.collections[collectionName] || []).find(item =>
+                        getDisplayValue(null, key, item.id).toLowerCase() === currentValue.toLowerCase()
+                    );
+
+                    if (existingItem && currentValue) {
+                        onSelect(existingItem.id, getDisplayValue(null, key, existingItem.id));
+                        moveToNextField();
+                    } else {
+                        const defaultName = DIRECTORIES[collectionName].fields.Name ? { Name: input.value } : {};
+                        openDirectoryModal(collectionName, null, defaultName, (newItem) => {
+                            if (newItem && newItem.id) {
+                                onSelect(newItem.id, getDisplayValue(null, key, newItem.id));
+                                moveToNextField();
+                            }
+                        });
+                    }
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (activeIndex > 0) {
+                    activeIndex--;
+                    setActiveItem();
+                }
+            } else if (e.key === 'Enter') {
+                e.stopPropagation(); // Stop event from bubbling up to the modal's keydown listener
+                e.preventDefault();
+                if (activeIndex > -1 && items[activeIndex]) {
+                    // If an item is highlighted, select it
+                    items[activeIndex].click();
+                } else {
+                    // If no item is highlighted, check if current text is a perfect match
+                    const currentValue = input.value.trim();
+                    const existingItem = (state.collections[collectionName] || []).find(item =>
+                        getDisplayValue(null, key, item.id).toLowerCase() === currentValue.toLowerCase()
+                    );
+                    if (existingItem) {
+                        onSelect(existingItem.id, getDisplayValue(null, key, existingItem.id));
+                    }
+                    // Always move to the next field on Enter
+                    moveToNextField();
+                }
+            } else if (e.key === 'F4') {
+                e.preventDefault();
+                if (editBtn && !editBtn.classList.contains('hidden')) {
+                    editBtn.click();
+                }
+            } else if (e.key === 'Escape') {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+
+        input.addEventListener('click', showFullList);
+
+        resultsContainer.addEventListener('click', e => {
+            if (e.target.classList.contains('autocomplete-item')) {
+                const id = e.target.dataset.id;
+                onSelect(id, e.target.textContent);
+                moveToNextField();
+            }
+        });
+
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                const itemId = hiddenInput.value;
+                if (itemId) {
+                    const onUpdateCallback = (updatedItem) => {
+                        if (updatedItem) {
+                            input.value = getDisplayValue(null, key, updatedItem.id);
+                        }
+                    };
+                    openDirectoryModal(collectionName, itemId, {}, onUpdateCallback);
+                } else {
+                    openInfoModal('Спочатку оберіть запис для редагування.');
+                }
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target)) {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+    }
+
+    function generateFormField(key, value, parentCollectionName) {
+        const label = DIRECTORIES[parentCollectionName]?.fields[key] || PASSENGER_FIELDS[key] || key;
+        let fieldHTML = `<div><label class="block text-sm font-medium text-gray-700 mb-1">${label}</label>`;
+        const refCollectionName = FK_MAP[key];
+
+        if (refCollectionName) {
+            const currentName = value ? getDisplayValue(parentCollectionName, key, value) : '';
+            const editIconHTML = `
+                    <button type="button" id="edit-btn-${key}" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Редагувати запис (F4)" tabindex="-1">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 14H3v-2l9-9 2 2-9 9z"/></svg>
+                    </button>
+                `;
+            fieldHTML += `
+                     <div class="relative">
+                         <!-- ВИПРАВЛЕНО: Змінено 'autocomplete' для кращої сумісності -->
+                         <input type="text" id="autocomplete-input-${key}" data-key="${key}" autocomplete="new-password" value="${currentName}" class="w-full border border-gray-300 rounded-md p-2 pr-10" placeholder="Введіть для пошуку...">
+                         <input type="hidden" name="${key}" value="${value || ''}">
+                         ${editIconHTML}
+                         <div id="autocomplete-results-${key}" class="autocomplete-results hidden"></div>
+                     </div>`;
+        } else if (key === 'DayOfTheWeek') {
+            const days = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"];
+            fieldHTML += `<select name="${key}" class="w-full border border-gray-300 rounded-md p-2">${days.map(day => `<option value="${day}" ${day === value ? 'selected' : ''}>${day}</option>`).join('')}</select>`;
+        } else if (key === 'Date') {
+            fieldHTML += `<input type="text" name="${key}" value="${value && value.seconds ? formatDate(value, 'dd.mm.yy') : ''}" class="w-full border border-gray-300 rounded-md p-2 date-input-mask" placeholder="дд.мм.рр">`;
+        } else if (key === 'TimeBegin' || key === 'TimeEnd') {
+            fieldHTML += `<input type="text" name="${key}" value="${value || ''}" class="w-full border border-gray-300 rounded-md p-2 time-input" placeholder="гг:хх">`;
+        } else if (key === 'password') {
+            fieldHTML += `<input type="password" name="${key}" value="${value || ''}" class="w-full border border-gray-300 rounded-md p-2" autocomplete="new-password">`;
+        } else {
+            fieldHTML += `<input type="text" name="${key}" value="${value || ''}" class="w-full border border-gray-300 rounded-md p-2">`;
+        }
+        return fieldHTML + `</div>`;
+    }
+
+    async function handleDirectoryFormSubmit(e, collectionName, itemId, onSaveCallback = null) {
+        e.preventDefault();
+        const form = e.target;
+        const data = Object.fromEntries(new FormData(form).entries());
+
+        Object.keys(data).forEach(key => {
+            if (['Capacity', 'Cod', 'NPNum'].includes(key)) {
+                data[key] = Number(data[key]) || 0;
+            }
+            if (key === 'Date' && data[key]) {
+                const parsedDate = parseDateString(data[key]);
+                if(parsedDate) {
+                    data[key] = Timestamp.fromDate(parsedDate);
+                } else {
+                    delete data[key];
+                }
+            }
+        });
+
+        if (collectionName === 'Trips') {
+            const routeId = data.RouteId;
+            const tripDate = data.Date;
+
+            if (!routeId || !tripDate) {
+                return openInfoModal("Будь ласка, оберіть маршрут та дату для рейсу.");
+            }
+
+            // ВИДАЛЕНО: Логіка генерації та перевірки унікальності поля 'Cod'.
+            // ДОДАНО: Нова перевірка на унікальність рейсу за комбінацією RouteId та Date.
+            const q = query(collection(db, 'Trips'), where("RouteId", "==", routeId), where("Date", "==", tripDate));
+            const existingTrips = await getDocs(q);
+
+            let isDuplicate = false;
+            if (!existingTrips.empty) {
+                existingTrips.forEach(doc => {
+                    if (doc.id !== itemId) {
+                        isDuplicate = true;
+                    }
+                });
+            }
+
+            if (isDuplicate) {
+                const routeName = getDisplayValue(null, 'RouteId', routeId);
+                const dateStr = formatDate(tripDate, 'dd.mm.yyyy');
+                return openInfoModal(`Рейс для маршруту "${routeName}" на дату ${dateStr} вже існує.`);
+            }
+        }
+
+        const checkExisting = async (field, value) => {
+            if (value) {
+                const q = query(collection(db, collectionName), where(field, "==", value));
+                const existing = await getDocs(q);
+                if (!existing.empty && existing.docs[0].id !== itemId) {
+                    openInfoModal(`Запис з ${field} "${value}" вже існує!`);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (collectionName === 'Agents' && await checkExisting('Name', data.Name)) return;
+        if (collectionName === 'Users' && await checkExisting('username', data.username)) return;
+
+        if (collectionName === 'Country' && data.ISO) {
+            data.ISO = data.ISO.toUpperCase();
+            if (await checkExisting('ISO', data.ISO)) return;
+        }
+
+        try {
+            const modal = form.closest('.modal-overlay');
+            if (itemId) {
+                await setDoc(doc(db, collectionName, itemId), data, { merge: true });
+                if (onSaveCallback) onSaveCallback({ id: itemId, ...data });
+            } else {
+                const newDocRef = await addDoc(collection(db, collectionName), data);
+                if (onSaveCallback) onSaveCallback({ id: newDocRef.id, ...data });
+            }
+            modal?.remove();
+        } catch (error) {
+            console.error("Error saving document: ", error);
+            openInfoModal(`Помилка збереження: ${error.message}`);
+        }
+    }
+
+    async function handlePassengerFormSubmit(e, passengerId) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = {
+            AgentId: formData.get('AgentId') || null,
+            TripId: formData.get('TripId'),
+            ClientId: formData.get('ClientId'),
+            Note: formData.get('Note') || '',
+            Ticket: formData.has('Ticket'),
+            Status: formData.has('Status'),
+            Place: formData.has('Place')
+        };
+        if (!data.TripId || !data.ClientId) return openInfoModal("Будь ласка, оберіть рейс та клієнта.");
+        try {
+            if (passengerId) {
+                await setDoc(doc(db, 'Passengers', passengerId), data, { merge: true });
+            } else {
+                data.Booking = Timestamp.now();
+                await addDoc(collection(db, 'Passengers'), data);
+            }
+            e.target.closest('.modal-overlay')?.remove();
+        } catch (error) {
+            console.error("Error saving passenger:", error);
+            openInfoModal(`Помилка збереження пасажира: ${error.message}`);
+        }
+    }
+
+    async function initializeAppLogic() {
+        setupEventListeners();
+        setupTripSelector('main');
+        setupTripSelector('reports');
+        renderDirectoryTabs();
+        await setupRealtimeListeners();
+
+        switchView('main');
+    }
+
+    async function setupRealtimeListeners() {
+        const allCollections = [
+            'Passengers', 'Clients', 'Users', 'Agents', 'Buses',
+            'Drivers', 'Country', 'Stations', 'Towns', 'Routes', 'Trips'
+        ];
+
+        const promises = allCollections.map(collectionName => {
+            return new Promise((resolve) => {
+                if (state.listeners[collectionName]) state.listeners[collectionName]();
+                const q = query(collection(db, collectionName));
+                state.listeners[collectionName] = onSnapshot(q, (snapshot) => {
+                    const isFirstLoad = !state.collections[collectionName];
+                    state.collections[collectionName] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (collectionName === 'Trips' && isFirstLoad) {
+                        selectDefaultTrip();
+                    }
+
+                    if (state.currentView === 'directories') {
+                        if (state.currentDirectory === collectionName || FK_MAP[Object.keys(DIRECTORIES[state.currentDirectory].fields).find(k => FK_MAP[k])] === collectionName) {
+                            renderDirectoryPage();
+                        }
+                    } else if (state.currentView === 'main') {
+                        renderMainPage();
+                    } else if (state.currentView === 'reports') {
+                        renderReportsPage();
+                    }
+
+                }, (error) => {
+                    console.error(`Error listening to ${collectionName}:`, error);
+                });
+                resolve();
+            });
+        });
+        await Promise.all(promises);
+    }
+
+    function selectDefaultTrip() {
+        if (!state.selectedTripId && state.collections.Trips && state.collections.Trips.length > 0) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const futureTrips = (state.collections.Trips || [])
+                .filter(t => t.Date && t.Date.toDate() >= now)
+                .sort((a,b) => a.Date.seconds - b.Date.seconds);
+            if (futureTrips.length > 0) {
+                state.selectedTripId = futureTrips[0].id;
+                if (state.currentView === 'main') {
+                    renderMainPage();
+                } else if (state.currentView === 'reports') {
+                    renderReportsPage();
+                }
+            }
+        }
+    }
+
+    function switchView(viewName) {
+        state.currentView = viewName;
+        mainPageView.classList.toggle('hidden', viewName !== 'main');
+        directoriesPageView.classList.toggle('hidden', viewName !== 'directories');
+        reportsPageView.classList.toggle('hidden', viewName !== 'reports');
+
+        navButtons.forEach(btn => {
+            btn.classList.toggle('bg-gray-200', btn.dataset.view === viewName);
+        });
+
+        selectDefaultTrip();
+
+        if (viewName === 'main') {
+            renderMainPage();
+        } else if (viewName === 'directories') {
+            renderDirectoryPage();
+        } else if (viewName === 'reports') {
+            renderReportsPage();
+            updateReportView();
+        }
+        updateTripSelectorDisplays();
+    }
+
+    function updateReportView() {
+        const isTripReport = state.currentReportType === 'trip';
+
+        reportTypeTripBtn.classList.toggle('border-blue-500', isTripReport);
+        reportTypeTripBtn.classList.toggle('text-blue-600', isTripReport);
+        reportTypeTripBtn.classList.toggle('font-semibold', isTripReport);
+        reportTypeTripBtn.classList.toggle('text-gray-500', !isTripReport);
+        reportTypeTripBtn.classList.toggle('hover:text-gray-700', !isTripReport);
+        reportTypeTripBtn.classList.toggle('border-transparent', !isTripReport);
+
+        reportTypeAgentBtn.classList.toggle('border-blue-500', !isTripReport);
+        reportTypeAgentBtn.classList.toggle('text-blue-600', !isTripReport);
+        reportTypeAgentBtn.classList.toggle('font-semibold', !isTripReport);
+        reportTypeAgentBtn.classList.toggle('text-gray-500', isTripReport);
+        reportTypeAgentBtn.classList.toggle('hover:text-gray-700', isTripReport);
+        reportTypeAgentBtn.classList.toggle('border-transparent', isTripReport);
+
+        tripReportsSection.classList.toggle('hidden', !isTripReport);
+        agentReportSection.classList.toggle('hidden', isTripReport);
+
+        updateReportButtonsState();
+
+        reportDisplayArea.innerHTML = '';
+        exportExcelBtn.classList.add('hidden');
+        printReportBtn.classList.add('hidden');
+    }
+
+    function renderDirectoryTabs() {
+        directoryTabsContainer.innerHTML = Object.keys(DIRECTORIES).map(key => `<button data-dir="${key}" class="dir-tab-btn flex items-center gap-2 px-4 py-2 text-sm rounded-md ${state.currentView === 'directories' && state.currentDirectory === key ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}"><span class="text-lg">${DIRECTORIES[key].icon}</span><span>${DIRECTORIES[key].title}</span></button>`).join('');
+    }
+
+    function populateCountryFilter() {
+        const filterSelect = document.getElementById('station-country-filter');
+        if (!filterSelect) return;
+        const countries = state.collections.Country || [];
+        let optionsHTML = '<option value="all">Всі країни</option>';
+        optionsHTML += countries
+            .sort((a, b) => a.Name.localeCompare(b.Name))
+            .map(c => `<option value="${c.id}">${c.Name}</option>`).join('');
+        filterSelect.innerHTML = optionsHTML;
+        filterSelect.value = state.stationCountryFilter;
+    }
+
+    function renderDirectoryPage() {
+        directoryTitle.textContent = DIRECTORIES[state.currentDirectory].title;
+        const stationFilterContainer = document.getElementById('station-filter-container');
+        if (state.currentDirectory === 'Stations' || state.currentDirectory === 'Towns') {
+            populateCountryFilter();
+            stationFilterContainer.classList.remove('hidden');
+            stationFilterContainer.classList.add('flex');
+        } else {
+            stationFilterContainer.classList.add('hidden');
+            stationFilterContainer.classList.remove('flex');
+        }
+        renderDirectoryTable();
+    }
+
+    function renderDirectoryTable() {
+        const directory = DIRECTORIES[state.currentDirectory];
+        let data = [...(state.collections[state.currentDirectory] || [])];
+
+        if ((state.currentDirectory === 'Stations' || state.currentDirectory === 'Towns') && state.stationCountryFilter !== 'all') {
+            const selectedCountry = (state.collections.Country || []).find(c => c.id === state.stationCountryFilter);
+            const ukraineCountry = (state.collections.Country || []).find(c => c.Cod === 0);
+
+            if (selectedCountry?.Cod === 1) { // Cod 1 is for 'European Union'
+                if (ukraineCountry) {
+                    data = data.filter(item => item.CountryId !== ukraineCountry.id);
+                }
+            } else {
+                data = data.filter(item => item.CountryId === state.stationCountryFilter);
+            }
+        }
+
+        if (state.directorySearchTerm) {
+            const term = state.directorySearchTerm.toLowerCase();
+            data = data.filter(item => Object.keys(directory.fields).some(key =>
+                getDisplayValue(state.currentDirectory, key, item[key]).toString().toLowerCase().includes(term)
+            ));
+        }
+
+        const { key, direction } = state.directorySortConfig;
+        if (key) {
+            data.sort((a, b) => {
+                const valA = a[key];
+                const valB = b[key];
+                let comparison = 0;
+
+                if (key === 'Date' && valA && valB) {
+                    comparison = valA.seconds - valB.seconds;
+                } else {
+                    comparison = String(valA ?? '').localeCompare(String(valB ?? ''));
+                }
+
+                return comparison * (direction === 'ascending' ? 1 : -1);
+            });
+        }
+
+        let tableHTML = `<table class="w-full text-left"><thead class="bg-gray-50 border-b-2 border-gray-200"><tr>${Object.keys(directory.fields).map(key => `<th class="p-3 text-sm font-semibold tracking-wide cursor-pointer" data-sort-key="${key}">${directory.fields[key]} ${state.directorySortConfig.key === key ? (state.directorySortConfig.direction === 'ascending' ? '▲' : '▼') : ''}</th>`).join('')}<th class="p-3">Дії</th></tr></thead><tbody>`;
+
+        tableHTML += data.map(item => {
+            let rowHTML = `<tr class="border-b border-gray-200 hover:bg-gray-50">`;
+            for (const key in directory.fields) {
+                if (state.currentDirectory === 'Stations' && key === 'Cod') {
+                    rowHTML += `<td class="p-1 text-sm">
+                                        <input type="text"
+                                               class="w-full p-2 border rounded-md bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition station-code-input"
+                                               value="${item[key] || ''}"
+                                               maxlength="4"
+                                               data-id="${item.id}"
+                                               data-field="Cod">
+                                     </td>`;
+                } else if (state.currentDirectory === 'Users' && key === 'password') {
+                    rowHTML += `<td class="p-3 text-sm">********</td>`;
+                } else {
+                    rowHTML += `<td class="p-3 text-sm">${getDisplayValue(state.currentDirectory, key, item[key])}</td>`;
+                }
+            }
+            // ВИДАЛЕНО: Поле 'Cod' з data-name для кнопки видалення. Тепер використовується дата.
+            const displayName = item.Name || item.Plate || (item.Date ? formatDate(item.Date) : '') || item.username || '';
+            rowHTML += `<td class="p-3"><button class="edit-item-btn" data-id="${item.id}" data-collection="${state.currentDirectory}">✏️</button><button class="delete-item-btn" data-id="${item.id}" data-name="${displayName}" data-collection="${state.currentDirectory}">🗑️</button></td></tr>`;
+            return rowHTML;
+        }).join('');
+
+        tableHTML += `</tbody></table>`;
+        directoryTableContainer.innerHTML = tableHTML;
+    }
+
+    function getDisplayValue(parentCollectionName, key, value) {
+        if (value === null || typeof value === 'undefined') return '—';
+        const refCollectionName = FK_MAP[key];
+        const refItem = refCollectionName ? (state.collections[refCollectionName] || []).find(i => i.id === value) : null;
+
+        if (refItem) {
+            if (key === 'TripId') {
+                const route = state.collections.Routes?.find(r => r.id === refItem.RouteId);
+                return `${refItem.Date ? formatDate(refItem.Date, 'dd.mm.yy') : 'N/A'} - ${route?.Name || '...'}`;
+            }
+            // ДОДАНО: Спеціальна логіка для відображення інформації про автобус.
+            // Тепер в таблиці рейсів буде виводитись номерний знак та назва автобуса.
+            if (key === 'BusId') {
+                return `${refItem.Plate || ''} - ${refItem.Name || ''}`;
+            }
+            return refItem.Name || refItem.Plate || refItem.Cod || refItem.username || 'N/A';
+        }
+        if (key === 'Date' && value.seconds) return formatDate(value, 'dd.mm.yy');
+        return value;
+    }
+
+    function renderMainPage() {
+        updateTripSelectorDisplays();
+        renderPassengerTable(state.selectedTripId);
+    }
+
+    function renderReportsPage() {
+        updateTripSelectorDisplays();
+        const agentFilterSelect = document.getElementById('agent-filter-select');
+        const agents = (state.collections.Agents || []).sort((a,b) => a.Name.localeCompare(b.Name));
+        agentFilterSelect.innerHTML = `<option value="all">Всі агенти</option>` + agents.map(a => `<option value="${a.id}">${a.Name}</option>`).join('');
+    }
+
+    async function handleCopyPassenger(passengerId) {
+        const original = (state.collections.Passengers || []).find(p => p.id === passengerId);
+        if (!original) return;
+        const newData = { ...original, Booking: Timestamp.now() };
+        delete newData.id;
+        if (state.selectedTripId) newData.TripId = state.selectedTripId;
+        await addDoc(collection(db, 'Passengers'), newData);
+    }
+
+    function renderPassengerTable(tripId) {
+        const allPassengersForTrip = (state.collections.Passengers || []).filter(p => (tripId === 'all' || (tripId && p.TripId === tripId)));
+        let passengersToDisplay = [...allPassengersForTrip];
+
+        if (tripId && tripId !== 'all') {
+            const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+            const bus = trip ? (state.collections.Buses || []).find(b => b.id === trip.BusId) : null;
+            const busCapacity = bus?.Capacity || 0;
+
+            const totalPassengers = allPassengersForTrip.length;
+            const unconfirmedCount = allPassengersForTrip.filter(p => !p.Status).length;
+            const additionalCount = allPassengersForTrip.filter(p => p.Place).length;
+
+            const isOverloaded = (totalPassengers + additionalCount) > (busCapacity - 2);
+            const totalCountColor = isOverloaded ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+
+            tripInfo.innerHTML = `
+                    <span class="cursor-pointer ${totalCountColor}" data-filter="all" title="Всього пасажирів (показати всіх)">${totalPassengers}</span>
+                    <span class="cursor-pointer text-blue-600 font-bold ml-3" data-filter="unconfirmed" title="Не підтверджено">${unconfirmedCount}</span>
+                    <span class="cursor-pointer text-yellow-500 font-bold ml-3" data-filter="additional" title="Додаткові місця">+${additionalCount}</span>
+                    <span class="text-gray-500"> / </span>
+                    <span class="cursor-pointer text-gray-800" data-filter="all" title="Місткість / Показати всіх">${busCapacity}</span>
+                `;
+        } else {
+            tripInfo.innerHTML = '';
+        }
+
+        if (tripId && tripId !== 'all') {
+            if (state.passengerFilter === 'unconfirmed') {
+                passengersToDisplay = allPassengersForTrip.filter(p => !p.Status);
+            } else if (state.passengerFilter === 'additional') {
+                passengersToDisplay = allPassengersForTrip.filter(p => p.Place);
+            }
+        }
+
+        let enriched = passengersToDisplay.map(p => {
+            const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
+            const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+            const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
+            const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+            let stationBegin, stationEnd, stationBeginCode, stationEndCode;
+
+            if (client) {
+                const stBeginUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA);
+                const stBeginEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU);
+                const stEndUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA);
+                const stEndEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU);
+
+                if (country?.Cod === 0) {
+                    stationBegin = stBeginUA?.Name || '—';
+                    stationEnd = stEndEU?.Name || '—';
+                    stationBeginCode = stBeginUA?.Cod || 0;
+                    stationEndCode = stEndEU?.Cod || 0;
+                } else {
+                    stationBegin = stBeginEU?.Name || '—';
+                    stationEnd = stEndUA?.Name || '—';
+                    stationBeginCode = stBeginEU?.Cod || 0;
+                    stationEndCode = stEndUA?.Cod || 0;
+                }
+            } else {
+                stationBegin = '—';
+                stationEnd = '—';
+                stationBeginCode = 0;
+                stationEndCode = 0;
+            }
+            return { ...p, ClientName: client?.Name || '', TripDate: trip?.Date?.toMillis() || 0, StationBegin: stationBegin, StationEnd: stationEnd, StationBeginCode: stationBeginCode, StationEndCode: stationEndCode };
+        });
+
+        if (state.passengerSearchTerm) {
+            const term = state.passengerSearchTerm.toLowerCase();
+            enriched = enriched.filter(p => {
+                return (p.ClientName || '').toLowerCase().includes(term) ||
+                    (p.StationBegin || '').toLowerCase().includes(term) ||
+                    (p.StationEnd || '').toLowerCase().includes(term) ||
+                    (p.Note || '').toLowerCase().includes(term);
+            });
+        }
+
+        const { key, direction } = state.passengerSortConfig;
+        const sortDirection = direction === 'ascending' ? 1 : -1;
+
+        enriched.sort((a, b) => {
+            let first, second;
+            if (key === 'StationBegin') {
+                first = a.StationBeginCode;
+                second = b.StationBeginCode;
+            } else if (key === 'StationEnd') {
+                first = a.StationEndCode;
+                second = b.StationEndCode;
+            } else if (key === 'TripDate') {
+                first = a.TripDate;
+                second = b.TripDate;
+            } else {
+                first = a[key] || '';
+                second = b[key] || '';
+            }
+
+            const comparison = String(first).localeCompare(String(second), undefined, { numeric: true });
+            if (comparison !== 0) return comparison * sortDirection;
+
+            // Secondary sort for station columns
+            if (key === 'StationBegin' || key === 'StationEnd') {
+                return (a.ClientName || '').localeCompare(b.ClientName || '');
+            }
+
+            return 0;
+        });
+
+        passengersTableHead.querySelectorAll('th[data-sort-key]').forEach(th => th.innerHTML = `${th.textContent.replace(/[▲▼]/g, '').trim()} ${state.passengerSortConfig.key === th.dataset.sortKey ? (state.passengerSortConfig.direction === 'ascending' ? '▲' : '▼') : ''}`);
+        passengerDateHeader.style.display = tripId === 'all' ? '' : 'none';
+
+        passengersTableBody.innerHTML = enriched.map(p => {
+            let dateCell = '';
+            if (tripId === 'all') {
+                const tripDate = p.TripDate ? new Date(p.TripDate) : null;
+                const formattedDate = tripDate
+                    ? `${String(tripDate.getDate()).padStart(2, '0')}.${String(tripDate.getMonth() + 1).padStart(2, '0')}.${String(tripDate.getFullYear()).slice(-2)}`
+                    : '';
+                dateCell = `<td class="p-3 text-sm">${formattedDate}</td>`;
+            }
+            return `
+                    <tr class="${p.Place ? 'bg-yellow-100' : (p.Status ? 'bg-green-50' : '')} ${p.Ticket ? 'font-bold' : ''} border-b">
+                        ${dateCell}
+                        <td class="p-3 text-sm">${p.ClientName || ''}</td>
+                        <td class="p-3 text-sm">${p.StationBegin}</td>
+                        <td class="p-3 text-sm">${p.StationEnd}</td>
+                        <td class="p-3 text-sm">${p.Note || ''}</td>
+                        <td class="p-3">
+                            <button class="status-btn text-xl ${p.Status ? '' : 'opacity-25'}" data-id="${p.id}" title="Підтверджено">✅</button>
+                            <button class="copy-passenger-btn text-gray-500 hover:text-gray-700 ml-2" data-id="${p.id}" title="Дублювати">📋</button>
+                            <button class="edit-passenger-btn text-blue-500 hover:text-blue-700 ml-2" data-id="${p.id}" title="Редагувати">✏️</button>
+                            <button class="delete-passenger-btn text-red-500 hover:text-red-700 ml-2" data-id="${p.id}" data-name="${p.ClientName}" title="Видалити">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+        }).join('');
+    }
+
+    async function generateCallListReport() {
+        const tripId = state.selectedTripId;
+        if (!tripId || tripId === 'all') {
+            openInfoModal('Будь ласка, оберіть конкретний рейс для формування звіту.');
+            return;
+        }
+
+        const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+        if (!trip) { return; }
+
+        const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+        const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+        const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+
+        const passengers = (state.collections.Passengers || [])
+            .filter(p => p.TripId === tripId)
+            .map(p => {
+                const client = state.collections.Clients.find(c => c.id === p.ClientId);
+                const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+
+                const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+                const townBeginId = client ? (country?.Cod === 0 ? client.TownIdUA : client.TownIdEU) : null;
+                const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
+
+                const stationBegin = state.collections.Stations.find(s => s.id === stationBeginId);
+                const townBegin = state.collections.Towns.find(t => t.id === townBeginId);
+                const townEnd = state.collections.Towns.find(t => t.id === townEndId);
+
+                return { ...p, client, stationBegin, townBegin, townEnd };
+            });
+
+        const groupedByStation = passengers.reduce((groups, p) => {
+            const stationId = p.stationBegin?.id || 'unknown';
+            if (!groups[stationId]) {
+                groups[stationId] = {
+                    name: p.stationBegin?.Name || 'Невідомо',
+                    code: p.stationBegin?.Cod || 0,
+                    passengers: []
+                };
+            }
+            groups[stationId].passengers.push(p);
+            return groups;
+        }, {});
+
+        const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[a].code - groupedByStation[b].code);
+
+        let listContent = '';
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            listContent += `${group.name}\n`;
+
+            group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            group.passengers.forEach((p, index) => {
+                const statusMarker = p.Status ? '+' : ' ';
+                const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                const phones = [telUA, telEU].filter(Boolean).join(', ');
+                listContent += `${index + 1}. ${statusMarker}\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${phones}\n`;
+            });
+            listContent += '\n';
+        });
+
+        reportDisplayArea.innerHTML = `
+                <div class="report-header" style="font-size: 11pt;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                </div>
+                <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>
+            `;
+
+        printReportBtn.classList.remove('hidden');
+    }
+
+    async function generateTransitReport() {
+        const tripId = state.selectedTripId;
+        if (!tripId || tripId === 'all') {
+            openInfoModal('Будь ласка, оберіть конкретний рейс для формування звіту.');
+            return;
+        }
+
+        const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+        if (!trip) {
+            openInfoModal("Помилка: не вдалося знайти обраний рейс.");
+            return;
+        }
+
+        const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+        const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+        const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+
+        const passengers = (state.collections.Passengers || [])
+            .filter(p => p.TripId === tripId)
+            .map(p => {
+                const client = state.collections.Clients.find(c => c.id === p.ClientId);
+                const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+
+                const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+                const stationEndId = client ? (country?.Cod === 0 ? client.StationIdEU : client.StationIdUA) : null;
+                const townBeginId = client ? (country?.Cod === 0 ? client.TownIdUA : client.TownIdEU) : null;
+                const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
+
+                const stationBegin = state.collections.Stations.find(s => s.id === stationBeginId);
+                const stationEnd = state.collections.Stations.find(s => s.id === stationEndId);
+                const townBegin = state.collections.Towns.find(t => t.id === townBeginId);
+                const townEnd = state.collections.Towns.find(t => t.id === townEndId);
+
+                return { ...p, client, stationBegin, stationEnd, townBegin, townEnd };
+            })
+            .filter(p => {
+                const beginName = p.stationBegin?.Name || '';
+                const endName = p.stationEnd?.Name || '';
+                return beginName.startsWith("Tranzit") || endName.startsWith("Tranzit");
+            })
+            .sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+        if (passengers.length === 0) {
+            reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Транзитних пасажирів на цьому рейсі не знайдено.</p>';
+            printReportBtn.classList.add('hidden');
+            return;
+        }
+
+        let listContent = '';
+        passengers.forEach((p, index) => {
+            const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+            const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+            listContent += `${index + 1}.\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${telUA}\t${telEU}\n`;
+        });
+
+        reportDisplayArea.innerHTML = `
+                <div class="report-header" style="font-size: 11pt;">
+                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                </div>
+                <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>
+            `;
+
+        printReportBtn.classList.remove('hidden');
+    }
+
+    async function generateDepartureReport() {
+        const tripId = state.selectedTripId;
+        if (!tripId || tripId === 'all') {
+            openInfoModal('Будь ласка, оберіть конкретний рейс для формування звіту.');
+            return;
+        }
+
+        const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+        if (!trip) { return; }
+
+        const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+        const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+        const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+
+        const allPassengers = (state.collections.Passengers || [])
+            .filter(p => p.TripId === tripId);
+
+        const passengers = allPassengers.map(p => {
+            const client = state.collections.Clients.find(c => c.id === p.ClientId);
+            const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+            const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+            const stationEndId = client ? (country?.Cod === 0 ? client.StationIdEU : client.StationIdUA) : null;
+            const stationBegin = state.collections.Stations.find(s => s.id === stationBeginId);
+            const stationEnd = state.collections.Stations.find(s => s.id === stationEndId);
+            return { ...p, client, stationBegin, stationEnd };
+        });
+
+        const totalPassengerCount = allPassengers.length;
+        const additionalPlacesCount = allPassengers.filter(p => p.Place).length;
+
+        const groupedByStation = passengers.reduce((groups, p) => {
+            const stationId = p.stationBegin?.id || 'unknown';
+            if (!groups[stationId]) {
+                groups[stationId] = {
+                    name: p.stationBegin?.Name || 'Невідомо',
+                    code: p.stationBegin?.Cod || 0,
+                    time: p.stationBegin?.TimeBegin || '',
+                    passengers: []
+                };
+            }
+            groups[stationId].passengers.push(p);
+            return groups;
+        }, {});
+
+        const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[a].code - groupedByStation[b].code);
+
+        let tableBodyHTML = '';
+        let passengerThroughCount = 0;
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            tableBodyHTML += `
+                    <tr class="group-header-row">
+                        <td colspan="4" style="text-align: right; padding: 4px;">
+                            ${group.name} <strong>${group.time}</strong>
+                        </td>
+                    </tr>`;
+
+            group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+            let groupCounter = 0;
+
+            group.passengers.forEach(p => {
+                passengerThroughCount++;
+                groupCounter++;
+
+                const statusMarkerHTML = p.Status ? '+' : '';
+                const placeMarkerHTML = p.Place ? `<strong>!h</strong>` : '';
+                const statusLine = [statusMarkerHTML, placeMarkerHTML].filter(Boolean).join(' ');
+
+                const passengerName = p.client?.Name || '';
+                const destination = p.stationEnd?.Name || '—';
+                const additionalPlaceText = p.Place ? `<strong>+ додаткове місце!</strong>` : '';
+
+                const paymentInfoHTML = p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : '';
+
+                const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                const phones = [telUA, telEU].filter(Boolean).join(', ');
+                const note = p.Note || '';
+
+                tableBodyHTML += `
+                        <tr class="passenger-row">
+                            <td style="text-align: center; width: 10%; vertical-align: top;">
+                                <div>${groupCounter} / <strong>${passengerThroughCount}</strong></div>
+                                <div>${statusLine}</div>
+                            </td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 45%;">
+                                <div style="font-size: 11pt;">${passengerName}</div>
+                                <div>${destination} ${additionalPlaceText}</div>
+                            </td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%;">
+                                ${paymentInfoHTML}
+                            </td>
+                            <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; width: 30%;">
+                                <div>${phones}</div>
+                                <div>${note}</div>
+                            </td>
+                        </tr>
+                    `;
+            });
+        });
+
+        reportDisplayArea.innerHTML = `
+                 <div class="report-header" style="font-size: 11pt;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                     <div style="text-align: right; font-size: 10pt;">
+                        <strong>Пасажирів всього:</strong> ${totalPassengerCount} <strong>+ додаткових місць:</strong> ${additionalPlacesCount}
+                    </div>
+                </div>
+                <table class="report-table" style="font-size: 9pt;">
+                    <tbody>
+                        ${tableBodyHTML}
+                    </tbody>
+                </table>
+            `;
+
+        printReportBtn.classList.remove('hidden');
+    }
+
+    async function generateArrivalReport() {
+        const tripId = state.selectedTripId;
+        if (!tripId || tripId === 'all') {
+            openInfoModal('Будь ласка, оберіть конкретний рейс для формування звіту.');
+            return;
+        }
+
+        const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+        if (!trip) { return; }
+
+        const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+        const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+        const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+
+        const passengers = (state.collections.Passengers || [])
+            .filter(p => p.TripId === tripId)
+            .map(p => {
+                const client = state.collections.Clients.find(c => c.id === p.ClientId);
+                const country = route ? state.collections.Country.find(c => c.id === route.CountryId) : null;
+
+                const stationEndId = client ? (country?.Cod === 0 ? client.StationIdEU : client.StationIdUA) : null;
+                const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
+
+                const stationEnd = state.collections.Stations.find(s => s.id === stationEndId);
+                const townEnd = state.collections.Towns.find(t => t.id === townEndId);
+
+                return { ...p, client, stationEnd, townEnd };
+            });
+
+        const groupedByStation = passengers.reduce((groups, p) => {
+            const stationId = p.stationEnd?.id || 'unknown';
+            if (!groups[stationId]) {
+                groups[stationId] = {
+                    name: p.stationEnd?.Name || 'Невідомо',
+                    code: p.stationEnd?.Cod || 0,
+                    time: p.stationEnd?.TimeEnd || '',
+                    passengers: []
+                };
+            }
+            groups[stationId].passengers.push(p);
+            return groups;
+        }, {});
+
+        const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[b].code - groupedByStation[a].code);
+
+        let tableBodyHTML = '';
+        let passengerThroughCount = 0;
+
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            let groupCounter = 0;
+
+            group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            group.passengers.forEach((p, index) => {
+                passengerThroughCount++;
+                groupCounter++;
+
+                const isFirstInGroup = index === 0;
+                const stationCellContent = isFirstInGroup
+                    ? `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>${group.time}</strong> ${group.name}</div>`
+                    : '';
+
+                tableBodyHTML += `
+                        <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
+                             <td style="width: 25%;">${stationCellContent}</td>
+                            <td style="width: 10%; text-align: center;">${groupCounter} / <strong>${passengerThroughCount}</strong></td>
+                            <td style="width: 30%;">${p.client?.Name || ''}</td>
+                            <td style="width: 20%;">${p.townEnd?.Name || ''}</td>
+                            <td style="width: 15%;"></td>
+                        </tr>
+                    `;
+            });
+        });
+
+        reportDisplayArea.innerHTML = `
+                 <div class="report-header" style="font-size: 11pt;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                        <span style="text-align: right;">${route?.Name || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span>${driver?.Name || ''}</span>
+                        <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                    </div>
+                </div>
+                <table class="report-table" style="font-size: 9pt;">
+                    <tbody>
+                        ${tableBodyHTML}
+                    </tbody>
+                </table>
+            `;
+
+        printReportBtn.classList.remove('hidden');
+    }
+
+    async function generateAgentReport() {
+        const agentSelect = document.getElementById('agent-filter-select');
+        const startDateInput = document.getElementById('start-date-filter');
+        const endDateInput = document.getElementById('end-date-filter');
+
+        const selectedAgentId = agentSelect.value;
+        const startDate = parseDateString(startDateInput.value);
+        const endDate = parseDateString(endDateInput.value);
+
+        if (!startDate || !endDate) {
+            openInfoModal('Будь ласка, вкажіть початкову та кінцеву дати.');
+            return;
+        }
+
+        // Set time to include the whole day
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        const startDateTimestamp = Timestamp.fromDate(startDate);
+        const endDateTimestamp = Timestamp.fromDate(endDate);
+
+        let passengers = state.collections.Passengers || [];
+
+        // Filter by agent if one is selected
+        if (selectedAgentId === 'all') {
+            passengers = passengers.filter(p => p.AgentId);
+        } else {
+            passengers = passengers.filter(p => p.AgentId === selectedAgentId);
+        }
+
+        // Filter by date range (needs trip data)
+        const passengersInDateRange = passengers.filter(p => {
+            const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+            return trip?.Date && trip.Date >= startDateTimestamp && trip.Date <= endDateTimestamp;
+        });
+
+        const reportData = passengersInDateRange.map(p => {
+            const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
+            const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+            const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
+            const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+            let stationBegin = '—', stationEnd = '—';
+
+            if (client) {
+                const stUA = (state.collections.Stations || []).find(s => s.id === client.StationIdUA)?.Name || '—';
+                const stEU = (state.collections.Stations || []).find(s => s.id === client.StationIdEU)?.Name || '—';
+                stationBegin = country?.Cod === 0 ? stUA : stEU;
+                stationEnd = country?.Cod === 0 ? stEU : stUA;
+            }
+
+            return {
+                tripDate: trip ? formatDate(trip.Date, 'dd.mm.yyyy') : 'N/A',
+                clientName: client?.Name || 'N/A',
+                stationBegin: (stationBegin.split(' ')[0] || '').replace(/,$/, ''),
+                stationEnd: (stationEnd.split(' ')[0] || '').replace(/,$/, ''),
+                agentId: p.AgentId
+            };
+        });
+
+        state.lastAgentReportData = reportData; // Save for CSV export
+
+        let headerText;
+        if (selectedAgentId !== 'all') {
+            headerText = `Звіт по агенту: ${agentSelect.options[agentSelect.selectedIndex].text}`;
+        } else {
+            headerText = 'Звіт по всіх агентах';
+        }
+        headerText += ` за період з ${startDateInput.value} по ${endDateInput.value}`;
+
+        let groupedData;
+        if (selectedAgentId === 'all') {
+            groupedData = reportData.reduce((groups, item) => {
+                const agentId = item.agentId || 'none';
+                if (!groups[agentId]) groups[agentId] = [];
+                groups[agentId].push(item);
+                return groups;
+            }, {});
+        }
+
+        let tableRows = '';
+        let count = 0;
+
+        if (groupedData) {
+            Object.keys(groupedData).forEach(agentId => {
+                const agentName = agentId === 'none' ? 'Без агента' : (state.collections.Agents.find(a => a.id === agentId)?.Name || 'Невідомий агент');
+                tableRows += `<tr class="group-header-row"><td colspan="5" style="background-color: #e0e0e0; font-weight: bold;">${agentName}</td></tr>`;
+                groupedData[agentId].forEach(item => {
+                    count++;
+                    tableRows += `
+                            <tr>
+                                <td>${count}</td>
+                                <td>${item.tripDate}</td>
+                                <td>${item.clientName}</td>
+                                <td>${item.stationBegin}</td>
+                                <td>${item.stationEnd}</td>
+                            </tr>`;
+                });
+            });
+        } else {
+            reportData.forEach(item => {
+                count++;
+                tableRows += `
+                        <tr>
+                            <td>${count}</td>
+                            <td>${item.tripDate}</td>
+                            <td>${item.clientName}</td>
+                            <td>${item.stationBegin}</td>
+                            <td>${item.stationEnd}</td>
+                        </tr>`;
+            });
+        }
+
+        const reportHTML = `
+                <h3 class="font-semibold text-lg mb-4">${headerText}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата рейсу</th>
+                            <th>Пасажир</th>
+                            <th>Місто відправки</th>
+                            <th>Місто прибуття</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+
+        reportDisplayArea.innerHTML = reportData.length > 0 ? reportHTML : '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
+        exportExcelBtn.classList.toggle('hidden', reportData.length === 0);
+    }
+
+    function exportAgentReportToExcel() {
+        if (!state.lastAgentReportData || state.lastAgentReportData.length === 0) {
+            openInfoModal("Немає даних для експорту.");
+            return;
+        }
+
+        const agentSelectValue = document.getElementById('agent-filter-select').value;
+
+        const dataToExport = state.lastAgentReportData.map((item, index) => {
+            const row = {
+                'N': index + 1,
+                'Дата рейсу': item.tripDate,
+                'Пасажир': item.clientName,
+                'Місто відправки': item.stationBegin,
+                'Місто прибуття': item.stationEnd
+            };
+            if (agentSelectValue === 'all') {
+                const agent = state.collections.Agents.find(a => a.id === item.agentId);
+                row['Агент'] = agent ? agent.Name : '';
+            }
+            return row;
+        });
+
+        // Reorder headers for 'all agents' report
+        let headers = ["N", "Дата рейсу", "Пасажир", "Місто відправки", "Місто прибуття"];
+        if (agentSelectValue === 'all') {
+            headers = ["N", "Агент", "Дата рейсу", "Пасажир", "Місто відправки", "Місто прибуття"];
+            dataToExport.forEach(row => {
+                const agent = state.collections.Agents.find(a => a.id === row.agentId);
+                row['Агент'] = agent ? agent.Name : '';
+            });
+        }
+
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Звіт по агентах");
+
+        XLSX.writeFile(workbook, "Agent_Report.xlsx");
+    }
+
+
+    function handlePrint() {
+        const reportContent = document.getElementById('report-display-area').innerHTML;
+        const printWindow = window.open('', '', 'height=800,width=1000');
+        if (!printWindow) {
+            openInfoModal('Будь ласка, дозвольте спливаючі вікна для друку.');
+            return;
+        }
+        const now = new Date();
+        const printDateTime = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const printStyles = `
+                @page {
+                    size: A4;
+                    margin: 0.7in 5.2mm 5.2mm 5.2mm;
+                    @bottom-left {
+                        content: "${printDateTime}";
+                        font-size: 9pt;
+                        font-family: sans-serif;
+                        color: #555;
+                    }
+                    @bottom-right {
+                        content: counter(page) " / " counter(pages);
+                        font-size: 9pt;
+                        font-family: sans-serif;
+                        color: #555;
+                    }
+                }
+                body { font-family: 'Inter', sans-serif; }
+                .report-header {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                    margin-bottom: 1rem;
+                    font-size: 11pt;
+                }
+                .report-header > div {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                 .report-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+                .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
+                .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
+                .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
+
+                .departure-report-table tr.group-header-row td { font-size: 10pt; font-weight: normal; }
+                .departure-report-table td { font-size: 10pt; }
+                .departure-report-table td.passenger-name-cell {
+                    border-left: 1px solid #ccc;
+                    border-right: 1px solid #ccc;
+                    font-size: 11pt;
+                }
+                .departure-report-table td.phones-cell { width: 1%; white-space: nowrap; }
+            `;
+        printWindow.document.write('<!DOCTYPE html><html lang="uk"><head><title>Друк звіту</title><style>' + printStyles + '</style></head><body>' + reportContent + '</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    }
+
+    function updateReportButtonsState() {
+        const reportButtons = [
+            generateCallListBtn, generateDepartureListBtn,
+            generateArrivalListBtn, generateTransitListBtn
+        ];
+        const isDisabled = !state.selectedTripId || state.selectedTripId === 'all';
+
+        reportButtons.forEach(button => {
+            if (button) {
+                button.disabled = isDisabled;
+            }
+        });
+    }
+
+    function adjustTripSelectorWidth() {
+        const calculator = document.getElementById('width-calculator');
+        const tripInput = document.getElementById('trip-select-input');
+        const reportTripInput = document.getElementById('report-trip-select-input');
+        if (!calculator || !tripInput || !reportTripInput) return;
+
+        // Use a placeholder with extra characters ("WWW") for a buffer
+        calculator.textContent = (tripInput.value || tripInput.placeholder) + 'WWW';
+        const newWidth = calculator.scrollWidth;
+
+        tripInput.style.width = `${newWidth}px`;
+        reportTripInput.style.width = `${newWidth}px`;
+    }
+
+    function updateTripSelectorDisplays() {
+        const tripInput = document.getElementById('trip-select-input');
+        const reportTripInput = document.getElementById('report-trip-select-input');
+        if (!tripInput || !reportTripInput) return;
+
+        let displayName = '';
+        if (state.selectedTripId) {
+            if (state.selectedTripId === 'all') {
+                displayName = 'Загальний список (всі дати)';
+            } else {
+                displayName = getDisplayValue('Passengers', 'TripId', state.selectedTripId);
+            }
+        }
+
+        tripInput.value = displayName;
+        reportTripInput.value = displayName;
+        adjustTripSelectorWidth();
+    }
+
+    function setupTripSelector(page) {
+        const inputId = page === 'main' ? 'trip-select-input' : 'report-trip-select-input';
+        const resultsId = page === 'main' ? 'trip-select-results' : 'report-trip-select-results';
+        const containerId = page === 'main' ? 'trip-select-container' : 'report-trip-select-container';
+
+        const input = document.getElementById(inputId);
+        const resultsContainer = document.getElementById(resultsId);
+        if (!input || !resultsContainer) return;
+
+        let activeIndex = -1;
+
+        const setActiveItem = () => {
+            const items = resultsContainer.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => item.classList.toggle('autocomplete-active', index === activeIndex));
+        };
+
+        const onSelect = (tripId) => {
+            state.selectedTripId = tripId;
+            state.passengerFilter = 'all';
+            updateTripSelectorDisplays();
+            resultsContainer.classList.add('hidden');
+
+            if (state.currentView === 'main') {
+                renderPassengerTable(state.selectedTripId);
+            }
+            if (state.currentView === 'reports') {
+                updateReportButtonsState();
+                reportDisplayArea.innerHTML = '';
+                exportExcelBtn.classList.add('hidden');
+                printReportBtn.classList.add('hidden');
+            }
+        };
+
+        const renderResults = (trips, includeAllOption = false) => {
+            let allTripsHTML = includeAllOption ? `<div class="autocomplete-item" data-id="all">Загальний список (всі дати)</div>` : '';
+            let tripOptionsHTML = trips.map(t => `<div class="autocomplete-item" data-id="${t.id}">${getDisplayValue('Passengers', 'TripId', t.id)}</div>`).join('');
+
+            if (!allTripsHTML && !tripOptionsHTML) {
+                resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Рейсів не знайдено</div>';
+            } else {
+                resultsContainer.innerHTML = allTripsHTML + tripOptionsHTML;
+            }
+
+            resultsContainer.classList.remove('hidden');
+            activeIndex = -1;
+        };
+
+        const showFutureTrips = () => {
+            const now = new Date();
+            now.setHours(0,0,0,0);
+            const futureTrips = (state.collections.Trips || [])
+                .filter(t => t.Date && t.Date.toDate() >= now)
+                .sort((a,b) => a.Date.seconds - b.Date.seconds);
+            renderResults(futureTrips, true); // Show "All" option
+        };
+
+        input.addEventListener('click', () => {
+            if (resultsContainer.classList.contains('hidden')) {
+                showFutureTrips();
+            }
+        });
+
+        input.addEventListener('input', () => {
+            const searchTerm = input.value.toLowerCase();
+            if (searchTerm.length === 0) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            const datePattern = searchTerm.match(/^(\d{2})\.?(\d{2})\.?(\d{2,4})$/);
+            let filteredTrips = (state.collections.Trips || []);
+
+            if (datePattern) {
+                const searchDay = datePattern[1];
+                const searchMonth = datePattern[2];
+                const searchYear = datePattern[3].length === 2 ? `20${datePattern[3]}` : datePattern[3];
+                filteredTrips = filteredTrips.filter(t => {
+                    if (!t.Date) return false;
+                    const tripDate = t.Date.toDate();
+                    // ВИПРАВЛЕНО: Замінено '==' на '===' для уникнення неявного перетворення типів.
+                    return tripDate.getDate() === parseInt(searchDay, 10) &&
+                        (tripDate.getMonth() + 1) === parseInt(searchMonth, 10) &&
+                        tripDate.getFullYear() === parseInt(searchYear, 10);
+                });
+            } else {
+                filteredTrips = filteredTrips.filter(t => getDisplayValue('Passengers', 'TripId', t.id).toLowerCase().includes(searchTerm));
+            }
+
+            filteredTrips.sort((a,b) => (a.Date?.seconds || 0) - (b.Date?.seconds || 0));
+            renderResults(filteredTrips, false); // Do NOT show "All" option on search
+        });
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (resultsContainer.classList.contains('hidden')) {
+                    showFutureTrips();
+                    setTimeout(() => { // Wait for DOM to render new items
+                        activeIndex = 0;
+                        setActiveItem();
+                    }, 0);
+                } else {
+                    const items = resultsContainer.querySelectorAll('.autocomplete-item');
+                    if (items.length > 0 && activeIndex < items.length - 1) {
+                        activeIndex++;
+                        setActiveItem();
+                    } else if (items.length === 0) {
+                        resultsContainer.classList.add('hidden'); // Hide the "No results found" message
+                        openDirectoryModal('Trips', null, {}, (newItem) => {
+                            if (newItem && newItem.id) {
+                                onSelect(newItem.id); // Select the newly created trip
+                            }
+                        });
+                    }
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const items = resultsContainer.querySelectorAll('.autocomplete-item');
+                if (activeIndex > 0) {
+                    activeIndex--;
+                    setActiveItem();
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (resultsContainer.classList.contains('hidden')) {
+                    showFutureTrips();
+                } else {
+                    const items = resultsContainer.querySelectorAll('.autocomplete-item');
+                    if (activeIndex > -1 && items[activeIndex]) {
+                        items[activeIndex].click();
+                    } else if (items.length === 1) {
+                        items[0].click();
+                    }
+                }
+            } else if (e.key === 'Escape') {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+
+        resultsContainer.addEventListener('click', e => {
+            if (e.target.classList.contains('autocomplete-item')) {
+                onSelect(e.target.dataset.id);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest(`#${containerId}`)) {
+                resultsContainer.classList.add('hidden');
+            }
+        });
+    }
+
+
+    function setupEventListeners() {
+        homeLink.addEventListener('click', () => switchView('main'));
+        navButtons.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+        directoryTabsContainer.addEventListener('click', e => {
+            const tabButton = e.target.closest('.dir-tab-btn');
+            if (tabButton) {
+                state.currentDirectory = tabButton.dataset.dir;
+                state.directorySortConfig = { ...DEFAULT_SORT_CONFIG[state.currentDirectory] };
+                directorySearchInput.value = ''; state.directorySearchTerm = '';
+                state.stationCountryFilter = 'all';
+                renderDirectoryTabs();
+                renderDirectoryPage();
+            }
+        });
+        directorySearchInput.addEventListener('input', e => { state.directorySearchTerm = e.target.value; renderDirectoryTable(); });
+        const setupSort = (container, configKey, renderFn) => {
+            container.addEventListener('click', e => {
+                const sortableHeader = e.target.closest('[data-sort-key]');
+                if (sortableHeader) {
+                    const key = sortableHeader.dataset.sortKey;
+                    const config = state[configKey];
+                    config.direction = config.key === key && config.direction === 'ascending' ? 'descending' : 'ascending';
+                    config.key = key;
+                    renderFn();
+                }
+            });
+        };
+        setupSort(directoryTableContainer, 'directorySortConfig', renderDirectoryTable);
+        setupSort(passengersTableHead, 'passengerSortConfig', () => renderPassengerTable(state.selectedTripId));
+
+        directoryTableContainer.addEventListener('input', e => {
+            if (e.target.matches('.station-code-input')) {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            }
+        });
+
+        directoryTableContainer.addEventListener('change', async (e) => {
+            if (e.target.matches('.station-code-input')) {
+                const input = e.target;
+                const id = input.dataset.id;
+                const newValue = input.value;
+
+                if (!id) return;
+
+                try {
+                    const docRef = doc(db, 'Stations', id);
+                    await setDoc(docRef, { Cod: Number(newValue) }, { merge: true });
+
+                    input.classList.add('bg-green-100', 'border-green-400');
+                    setTimeout(() => {
+                        input.classList.remove('bg-green-100', 'border-green-400');
+                    }, 1500);
+
+                } catch (error) {
+                    console.error("Error updating station code:", error);
+                    input.classList.add('bg-red-100', 'border-red-400');
+                    setTimeout(() => {
+                        input.classList.remove('bg-red-100', 'border-red-400');
+                    }, 2000);
+                    openInfoModal("Помилка при оновленні коду.");
+                }
+            }
+        });
+
+        const stationCountryFilter = document.getElementById('station-country-filter');
+        stationCountryFilter.addEventListener('change', e => {
+            state.stationCountryFilter = e.target.value;
+            renderDirectoryTable();
+        });
+
+        passengerSearchInput.addEventListener('input', e => {
+            state.passengerSearchTerm = e.target.value;
+            renderPassengerTable(state.selectedTripId);
+        });
+
+        addPassengerBtn.addEventListener('click', () => openPassengerModal());
+        addDirectoryItemBtn.addEventListener('click', () => openDirectoryModal(state.currentDirectory));
+        generateCallListBtn.addEventListener('click', generateCallListReport);
+        generateDepartureListBtn.addEventListener('click', generateDepartureReport);
+        generateArrivalListBtn.addEventListener('click', generateArrivalReport);
+        generateTransitListBtn.addEventListener('click', generateTransitReport);
+        generateAgentReportBtn.addEventListener('click', generateAgentReport);
+        exportExcelBtn.addEventListener('click', exportAgentReportToExcel);
+        printReportBtn.addEventListener('click', handlePrint);
+
+        tripInfo.addEventListener('click', (e) => {
+            const filterTarget = e.target.closest('[data-filter]');
+            if (filterTarget) {
+                e.preventDefault();
+                state.passengerFilter = filterTarget.dataset.filter;
+                renderPassengerTable(state.selectedTripId);
+            }
+        });
+
+        document.body.addEventListener('click', async (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const { id, name, collection } = target.dataset;
+            if (target.matches('.delete-item-btn, .delete-passenger-btn')) {
+                openConfirmModal(`Ви впевнені, що хочете видалити "${name}"?`, async () => {
+                    await deleteDoc(doc(db, collection || 'Passengers', id));
+                });
+            } else if (target.matches('.status-btn')) {
+                const p = (state.collections.Passengers || []).find(p => p.id === id);
+                if (p) await setDoc(doc(db, 'Passengers', id), { Status: !p.Status }, { merge: true });
+            } else if (target.matches('.edit-item-btn')) {
+                openDirectoryModal(collection, id);
+            } else if (target.matches('.edit-passenger-btn')) {
+                openPassengerModal(id);
+            } else if (target.matches('.copy-passenger-btn')) {
+                await handleCopyPassenger(id);
+            }
+        });
+
+        document.body.addEventListener('input', (e) => {
+            if (e.target.matches('.date-input-mask')) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length > 2) {
+                    value = value.substring(0, 2) + '.' + value.substring(2);
+                }
+                if (value.length > 5) {
+                    value = value.substring(0, 5) + '.' + value.substring(5, 9);
+                }
+                e.target.value = value.substring(0, 10);
+            }
+        });
+
+        new Datepicker(document.getElementById('start-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+        new Datepicker(document.getElementById('end-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Insert') {
+                if (modalContainer.children.length > 0) return;
+                e.preventDefault();
+                if (state.currentView === 'directories') {
+                    addDirectoryItemBtn.click();
+                } else if (state.currentView === 'main') {
+                    addPassengerBtn.click();
+                }
+            }
+
+            if (e.key === 'F7') {
+                e.preventDefault();
+                if (state.currentView === 'main') {
+                    passengerSearchInput.focus();
+                    passengerSearchInput.select();
+                } else if (state.currentView === 'directories') {
+                    directorySearchInput.focus();
+                    directorySearchInput.select();
+                }
+            }
+        });
+
+        reportTypeTripBtn.addEventListener('click', () => {
+            state.currentReportType = 'trip';
+            updateReportView();
+        });
+
+        reportTypeAgentBtn.addEventListener('click', () => {
+            state.currentReportType = 'agent';
+            updateReportView();
+        });
+    }
+</script>
+</body>
+</html>

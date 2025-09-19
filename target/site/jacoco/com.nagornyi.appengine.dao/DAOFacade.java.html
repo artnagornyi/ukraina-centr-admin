@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="uk"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DAOFacade.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">ukraina-centr-admin</a> &gt; <a href="index.source.html" class="el_package">com.nagornyi.appengine.dao</a> &gt; <span class="el_source">DAOFacade.java</span></div><h1>DAOFacade.java</h1><pre class="source lang-java linenums">package com.nagornyi.appengine.dao;
+
+import com.google.appengine.api.datastore.Key;
+import com.nagornyi.appengine.dao.app.AppEngineFactory;
+import com.nagornyi.appengine.entity.BaseEntity;
+import org.apache.commons.collections4.CollectionUtils;
+
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * @author Nagorny
+ *         Date: 12.05.14
+ */
+<span class="nc" id="L15">public class DAOFacade {</span>
+<span class="nc" id="L16">    private static DAOFactory factory = new AppEngineFactory();</span>
+
+    public static DAOFactory getFactory() {
+<span class="nc" id="L19">        return factory;</span>
+    }
+
+    public static &lt;E extends BaseEntity, T extends DAO&lt;E&gt;&gt; T getDAO(Class&lt;E&gt; kind) {
+<span class="nc" id="L23">        return getFactory().getDAO(kind);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; Key save(E entity) {
+<span class="nc" id="L27">        return ((DAO&lt;E&gt;)getDAO(entity.getClass())).save(entity);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; List&lt;Key&gt; bulkSave(List&lt;E&gt; entities) {
+<span class="nc bnc" id="L31" title="All 2 branches missed.">        if (CollectionUtils.isEmpty(entities)) return Collections.emptyList();</span>
+<span class="nc" id="L32">        E ent = entities.iterator().next();</span>
+
+<span class="nc" id="L34">        return ((DAO&lt;E&gt;)getDAO(ent.getClass())).save(entities);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; void bulkCreate(List&lt;E&gt; entities) {
+<span class="nc" id="L38">        E ent = entities.iterator().next();</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">        if (ent == null) return;</span>
+
+<span class="nc" id="L41">        ((DAO&lt;E&gt;)getDAO(ent.getClass())).create(entities);</span>
+<span class="nc" id="L42">    }</span>
+
+    public static &lt;E extends BaseEntity&gt; void create(E entity) {
+<span class="nc" id="L45">        ((DAO&lt;E&gt;)getDAO(entity.getClass())).create(entity);</span>
+<span class="nc" id="L46">    }</span>
+
+    public static &lt;E extends BaseEntity&gt; E findById(Class&lt;E&gt; kind, Key id) {
+<span class="nc" id="L49">        return getDAO(kind).getById(id);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; E findByKey(Class&lt;E&gt; kind, Key key) {
+<span class="nc" id="L53">        return getDAO(kind).getByKey(key);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; List&lt;E&gt; findAll(Class&lt;E&gt; kind) {
+<span class="nc" id="L57">        return getDAO(kind).getAll();</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; List&lt;E&gt; findByParent(Class&lt;E&gt; kind, Key parentKey) {
+<span class="nc" id="L61">        return getDAO(kind).getByParent(parentKey);</span>
+    }
+
+    public static &lt;E extends BaseEntity&gt; void delete(E entity) {
+<span class="nc" id="L65">        ((DAO&lt;E&gt;)getDAO(entity.getClass())).delete(entity);</span>
+<span class="nc" id="L66">    }</span>
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

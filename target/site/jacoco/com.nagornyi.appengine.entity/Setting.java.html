@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="uk"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Setting.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">ukraina-centr-admin</a> &gt; <a href="index.source.html" class="el_package">com.nagornyi.appengine.entity</a> &gt; <span class="el_source">Setting.java</span></div><h1>Setting.java</h1><pre class="source lang-java linenums">package com.nagornyi.appengine.entity;
+
+import com.google.appengine.api.datastore.Entity;
+
+public class Setting extends EntityWrapper {
+
+
+    private String settingKey;
+
+    private String settingValue;
+
+<span class="nc" id="L12">    public Setting() {</span>
+<span class="nc" id="L13">    }</span>
+
+    public Setting(Entity entity) {
+<span class="nc" id="L16">        super(entity);</span>
+<span class="nc" id="L17">    }</span>
+
+    public String getSettingKey() {
+<span class="nc" id="L20">        return getProperty(&quot;settingKey&quot;);</span>
+    }
+
+    public void setSettingKey(String settingKey) {
+<span class="nc" id="L24">        setProperty(&quot;settingKey&quot;, settingKey);</span>
+<span class="nc" id="L25">    }</span>
+
+    public String getSettingValue() {
+<span class="nc" id="L28">        return getProperty(&quot;settingValue&quot;);</span>
+    }
+
+    public void setSettingValue(String settingValue) {
+<span class="nc" id="L32">        setProperty(&quot;settingValue&quot;, settingValue);</span>
+<span class="nc" id="L33">    }</span>
+
+    public static Setting newSetting(String settingKey) {
+<span class="nc" id="L36">        Setting setting = new Setting();</span>
+<span class="nc" id="L37">        setting.setSettingKey(settingKey);</span>
+<span class="nc" id="L38">        return setting;</span>
+    }
+ }
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

@@ -1,7 +1,7 @@
 // js/views/parcelsView.js
 import { state } from '../state.js';
 import { getDisplayValue } from '../utils.js';
-import { openParcelModal, openConfirmModal, openInfoModal } from '../ui/modal.js';
+import { openParcelModal, openConfirmModal } from '../ui/modal.js';
 import { doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from '../firebase.js';
 
@@ -27,30 +27,6 @@ function getFilteredParcels() {
         );
     }
     return parcels;
-}
-
-function exportParcelsToExcel() {
-    const parcelsToExport = getFilteredParcels();
-    if (parcelsToExport.length === 0) {
-        openInfoModal("Немає даних для експорту.");
-        return;
-    }
-
-    // Export with the new unified field names
-    const dataForSheet = parcelsToExport.map(p => ({
-        'ID документа': p.id,
-        ClientId: p.ClientId,
-        TripId: p.TripId,
-        Name: p.Name,
-        Weight: p.Weight,
-        Paid: p.Paid,
-        Money: p.Money
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Посилки");
-    XLSX.writeFile(workbook, "Parcels_Export.xlsx");
 }
 
 function handleTableActions(e) {
@@ -111,8 +87,10 @@ export function initParcelsView() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="export-parcels-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Export в Excel</button>
-                    <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Додати посилку</button>
+                    <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>Додати посилку</span>
+                    </button>
                 </div>
             </div>
             <div id="parcels-table-container" class="overflow-x-auto mt-4"></div>
@@ -122,7 +100,6 @@ export function initParcelsView() {
     searchInput = document.getElementById('parcel-search-input');
 
     document.getElementById('add-parcel-btn').addEventListener('click', () => openParcelModal());
-    document.getElementById('export-parcels-btn').addEventListener('click', exportParcelsToExcel);
 
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimeout);

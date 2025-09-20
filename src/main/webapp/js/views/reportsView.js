@@ -49,14 +49,19 @@ function getTripData(tripId, collectionName = 'Passengers') {
             .filter(p => p.TripId === tripId)
             .map(p => {
                 const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
-                let stationBegin = '—', stationEnd = '—';
+                let townBegin = null, townEnd = null, stationBegin = null, stationEnd = null;
                 if (client && country) {
-                    const townUA = getDisplayValue('Clients', 'TownIdUA', client.TownIdUA);
-                    const townEU = getDisplayValue('Clients', 'TownIdEU', client.TownIdEU);
-                    stationBegin = country.Cod === 0 ? townUA : townEU;
-                    stationEnd = country.Cod === 0 ? townEU : townUA;
+                    const townBeginId = country.Cod === 0 ? client.TownIdUA : client.TownIdEU;
+                    const townEndId = country.Cod === 0 ? client.TownIdEU : client.TownIdUA;
+                    townBegin = (state.collections.Towns || []).find(t => t.id === townBeginId);
+                    townEnd = (state.collections.Towns || []).find(t => t.id === townEndId);
+
+                    const stationBeginId = country.Cod === 0 ? client.StationIdUA : client.StationIdEU;
+                    const stationEndId = country.Cod === 0 ? client.StationIdEU : client.StationIdUA;
+                    stationBegin = (state.collections.Stations || []).find(s => s.id === stationBeginId);
+                    stationEnd = (state.collections.Stations || []).find(s => s.id === stationEndId);
                 }
-                return { ...p, client, stationBegin, stationEnd };
+                return { ...p, client, townBegin, townEnd, stationBegin, stationEnd };
             });
     }
 
@@ -73,7 +78,7 @@ function generateRomaReport() {
 function generateParcelDepartureCitiesReport() {
     const data = getTripData(state.selectedTripId, 'Parcels');
     if (!data) return;
-    const { trip, route, country, items: parcels } = data;
+    const { trip, route, country, items: allParcels } = data;
 
     if (country?.Cod !== 0) {
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів з України в ЄС.</p>';
@@ -81,47 +86,56 @@ function generateParcelDepartureCitiesReport() {
         return;
     }
 
+    const parcels = allParcels.filter(p => p.stationEnd?.Cod > 2099);
+
     const groupedByStation = parcels.reduce((groups, p) => {
-        const stationName = p.stationEnd || 'Невідомо';
-        if (!groups[stationName]) {
-            groups[stationName] = [];
+        const stationId = p.stationEnd?.id || 'unknown';
+        if (!groups[stationId]) {
+            groups[stationId] = {
+                station: p.stationEnd,
+                parcels: []
+            };
         }
-        groups[stationName].push(p);
+        groups[stationId].parcels.push(p);
         return groups;
     }, {});
 
-    const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => a.localeCompare(b));
+    const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => {
+        const codeA = groupedByStation[a].station?.Cod || 0;
+        const codeB = groupedByStation[b].station?.Cod || 0;
+        return codeB - codeA;
+    });
 
     let reportHTML = `
-        <div class="report-header" style="font-size: 10pt;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <span style="font-size: 11pt;">${route?.Name || ''}</span>
-                <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
-            </div>
+        <div class="report-header" style="font-size: 11pt; text-align: left; margin-bottom: 1rem;">
+            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+            <span class="ml-4">${route?.Name || ''}</span>
         </div>
         <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse;">
             <tbody>`;
 
     if (parcels.length === 0) {
-        reportHTML = '<p class="text-center text-gray-500">Посилок для цього рейсу не знайдено.</p>';
+        reportHTML = '<p class="text-center text-gray-500">Посилок, що відповідають критеріям (код зупинки > 2099), не знайдено.</p>';
     } else {
-        sortedGroupKeys.forEach(stationName => {
-            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold;">${stationName}</td></tr>`;
-            const groupParcels = groupedByStation[stationName];
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            const stationName = group.station?.Name || 'Невідомо';
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold; text-align: right;">${stationName}</td></tr>`;
+            const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
             groupParcels.forEach((p, index) => {
-                const phones = [p.client?.TelUA ? `+38${p.client.TelUA}` : '', p.client?.TelEU ? `+39${p.client.TelEU}` : ''].filter(Boolean).join(', ');
-                const paidMarker = p.Paid ? '+' : '-';
+                const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+                const moneyCellContent = p.Paid ? '<strong>опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 3%; vertical-align: top;">${index + 1}.</td>
-                    <td style="width: 25%; vertical-align: top;">${p.client?.Name || ''}</td>
-                    <td style="width: 17%; vertical-align: top;">${phones}</td>
-                    <td style="width: 25%; vertical-align: top;">${p.Name || ''}</td>
-                    <td style="width: 10%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
-                    <td style="width: 10%; vertical-align: top; text-align: center;">${p.Money || ''}</td>
-                    <td style="width: 10%; vertical-align: top; text-align: center; font-weight: bold;">${paidMarker}</td>
+                    <td style="width: 22%; vertical-align: top;">${p.client?.Name || ''}</td>
+                    <td style="width: 15%; vertical-align: top;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 15%; vertical-align: top;">${phones}</td>
+                    <td style="width: 30%; vertical-align: top;">${p.Name || ''}</td>
+                    <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
+                    <td style="width: 10%; vertical-align: top; text-align: center;">${moneyCellContent}</td>
                 </tr>`;
             });
         });
@@ -506,7 +520,7 @@ function handlePrint() {
         body { 
             font-family: 'Inter', sans-serif;
         }
-        .report-header { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; font-size: 11pt; }
+        .report-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; font-size: 11pt; }
         .report-header .report-header-flex-row { display: flex; justify-content: space-between; align-items: flex-start; }
         table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
         tr { page-break-inside: avoid; page-break-after: auto; }
@@ -572,9 +586,18 @@ export function initReportsView() {
     reportsPageView.innerHTML = `
     <div class="bg-white p-4 rounded-lg shadow-md mb-4">
         <div class="flex border-b mb-4">
-            <button id="report-type-trip" class="report-type-btn py-2 px-4 border-b-2">Звіти по рейсах</button>
-            <button id="report-type-parcel" class="report-type-btn py-2 px-4">Реєстри посилок</button>
-            <button id="report-type-agent" class="report-type-btn py-2 px-4">Звіт по агентах</button>
+            <button id="report-type-trip" class="report-type-btn py-2 px-4 border-b-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span>Звіти по рейсах</span>
+            </button>
+            <button id="report-type-parcel" class="report-type-btn py-2 px-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                <span>Реєстри посилок</span>
+            </button>
+            <button id="report-type-agent" class="report-type-btn py-2 px-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <span>Звіт по агентах</span>
+            </button>
         </div>
         
         <div id="trip-reports-section">
@@ -587,30 +610,54 @@ export function initReportsView() {
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
-                    <button id="generate-call-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Обзвон</button>
-                    <button id="generate-departure-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Відправка</button>
-                    <button id="generate-arrival-list-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Прибуття</button>
-                    <button id="generate-transit-list-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg">Транзит</button>
+                    <button id="generate-call-list-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                        <span>Обзвон</span>
+                    </button>
+                    <button id="generate-departure-list-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        <span>Відправка</span>
+                    </button>
+                    <button id="generate-arrival-list-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H7a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <span>Прибуття</span>
+                    </button>
+                    <button id="generate-transit-list-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                        <span>Транзит</span>
+                    </button>
                 </div>
-                <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
-                    <span>Друк</span>
-                </button>
             </div>
         </div>
 
         <div id="parcel-reports-section" class="hidden">
-            <div class="flex flex-wrap items-center gap-4 mb-4">
-                <div class="flex items-center p-2 bg-gray-100 rounded-md">
-                    <p class="text-sm text-gray-600">Рейс для реєстрів обирається у вкладці "Звіти по рейсах".</p>
-                </div>
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div class="flex flex-wrap gap-2 items-center">
-                    <button id="generate-roma-report-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Roma</button>
-                    <button id="generate-parcel-departure-cities-report-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Відправка за містами</button>
-                    <button id="generate-kropyvnytskyi-report-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Кропивницький</button>
-                    <button id="generate-nova-poshta-report-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Нова пошта</button>
-                    <button id="generate-parcel-arrival-cities-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Отримання за містами</button>
+                    <button id="generate-roma-report-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <span>Roma</span>
+                    </button>
+                    <button id="generate-parcel-departure-cities-report-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        <span>Відправка за містами</span>
+                    </button>
+                    <button id="generate-kropyvnytskyi-report-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                        <span>Кропивницький</span>
+                    </button>
+                    <button id="generate-nova-poshta-report-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h10zM13 16l-4-4h9v4h-5z" /></svg>
+                        <span>Нова пошта</span>
+                    </button>
+                    <button id="generate-parcel-arrival-cities-report-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
+                        <span>Отримання за містами</span>
+                    </button>
                 </div>
+                 <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
+                    <span>Друк</span>
+                </button>
             </div>
         </div>
 
@@ -628,9 +675,12 @@ export function initReportsView() {
                     <label for="end-date-filter" class="text-sm font-medium">По:</label>
                     <input type="text" id="end-date-filter" class="p-2 border border-gray-300 rounded-md w-32 date-input-mask" placeholder="дд.мм.рр">
                 </div>
-                <button id="generate-agent-report-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg self-end">Сформувати</button>
+                <button id="generate-agent-report-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>Сформувати</span>
+                </button>
                 <button id="export-excel-btn" class="hidden ml-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.64L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     <span>Export Excel</span>
                 </button>
             </div>

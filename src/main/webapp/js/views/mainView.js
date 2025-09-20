@@ -86,7 +86,7 @@ function renderPassengerTable(tripId) {
         });
     }
 
-    const sortConfig = state.passengerSortConfig || { key: 'ClientId', direction: 'ascending' };
+    const sortConfig = state.passengerSortConfig || { key: 'ClientName', direction: 'ascending' };
     const { key, direction } = sortConfig;
     enriched.sort((a, b) => {
         let valA = a[key];
@@ -162,7 +162,10 @@ export function initMainView() {
                 </div>
             </div>
             <div id="trip-info" class="text-lg font-bold"></div>
-            <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Додати пасажира</button>
+            <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                <span>Додати пасажира</span>
+            </button>
         </div>
         <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
             <table class="w-full text-left">
@@ -200,7 +203,7 @@ export function initMainView() {
         if (!th) return;
         const key = th.dataset.sortKey;
         if (!state.passengerSortConfig) {
-            state.passengerSortConfig = { key: 'ClientId', direction: 'ascending' };
+            state.passengerSortConfig = { key: 'ClientName', direction: 'ascending' };
         }
         if (state.passengerSortConfig.key === key) {
             state.passengerSortConfig.direction = state.passengerSortConfig.direction === 'ascending' ? 'descending' : 'ascending';

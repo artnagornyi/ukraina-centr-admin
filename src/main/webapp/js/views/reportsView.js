@@ -129,15 +129,16 @@ function generateParcelDepartureCitiesReport() {
                 const moneyCellContent = p.Paid ? '<strong>опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
-                    <td style="width: 3%; vertical-align: top;">${index + 1}.</td>
-                    <td style="width: 22%; vertical-align: top;">${p.client?.Name || ''}</td>
-                    <td style="width: 15%; vertical-align: top;">${p.townEnd?.Name || ''}</td>
-                    <td style="width: 15%; vertical-align: top;">${phones}</td>
-                    <td style="width: 30%; vertical-align: top;">${p.Name || ''}</td>
+                    <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${phones}</td>
+                    <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
                     <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
-                    <td style="width: 10%; vertical-align: top; text-align: center;">${moneyCellContent}</td>
+                    <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${moneyCellContent}</td>
                 </tr>`;
             });
+             reportHTML += `<tr><td colspan="7" style="border-bottom: 2px solid #000; padding: 0;"></td></tr>`;
         });
         reportHTML += `</tbody></table>`;
     }
@@ -498,24 +499,10 @@ function handlePrint() {
     const now = new Date();
     const printDateTime = `${now.toLocaleDateString('uk-UA')} ${now.toLocaleTimeString('uk-UA')}`;
 
-    const printStyles = `
+    let printStyles = `
         @page {
             size: A4;
             margin: 20mm 5.2mm 5.2mm 5.2mm;
-
-            @bottom-left {
-                content: "${printDateTime}";
-                font-family: 'Inter', sans-serif;
-                font-size: 8pt;
-                color: #666;
-            }
-
-            @bottom-right {
-                content: counter(page) " / " counter(pages);
-                font-family: 'Inter', sans-serif;
-                font-size: 8pt;
-                color: #666;
-            }
         }
         body { 
             font-family: 'Inter', sans-serif;
@@ -535,6 +522,25 @@ function handlePrint() {
         .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; font-size: 10pt; }
         .departure-report-table .phones-cell { width: 1%; white-space: nowrap; }
     `;
+
+    if (state.currentReportType !== 'parcel') {
+        printStyles += `
+            @page {
+                @bottom-left {
+                    content: "${printDateTime}";
+                    font-family: 'Inter', sans-serif;
+                    font-size: 8pt;
+                    color: #666;
+                }
+                @bottom-right {
+                    content: counter(page) " / " counter(pages);
+                    font-family: 'Inter', sans-serif;
+                    font-size: 8pt;
+                    color: #666;
+                }
+            }
+        `;
+    }
 
     printWindow.document.write(`<html><head><title>Друк звіту</title><style>${printStyles}</style></head><body>${reportContent}</body></html>`);
     printWindow.document.close();

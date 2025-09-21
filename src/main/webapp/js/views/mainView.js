@@ -9,10 +9,36 @@ import { updateTripSelectorDisplays } from '../tripSelector.js';
 // Module-level variables for DOM elements
 let mainPageView, passengerSearchInput, addPassengerBtn, passengersTableBody, passengersTableHead, tripInfo, passengerDateHeader;
 
+// Initialize selectedPassengerId in the state
+state.selectedPassengerId = null;
+
 export function renderMainPage() {
     if (!mainPageView) return;
     updateTripSelectorDisplays();
     renderPassengerTable(state.selectedTripId);
+}
+
+function updateRowHighlights() {
+    const rows = passengersTableBody.querySelectorAll('tr[data-id]');
+    rows.forEach(row => {
+        const passengerId = row.dataset.id;
+        const isSelected = state.selectedPassengerId === passengerId;
+
+        // Reset classes
+        row.classList.remove('bg-blue-200', 'bg-yellow-100', 'bg-green-50', 'hover:bg-gray-100');
+
+        if (isSelected) {
+            row.classList.add('bg-blue-200');
+        } else {
+            // Apply original conditional classes if not selected
+            if (row.dataset.place === 'true') {
+                row.classList.add('bg-yellow-100');
+            } else if (row.dataset.status === 'true') {
+                row.classList.add('bg-green-50');
+            }
+            row.classList.add('hover:bg-gray-100');
+        }
+    });
 }
 
 function renderPassengerTable(tripId) {
@@ -89,17 +115,39 @@ function renderPassengerTable(tripId) {
     const sortConfig = state.passengerSortConfig || { key: 'ClientName', direction: 'ascending' };
     const { key, direction } = sortConfig;
     enriched.sort((a, b) => {
-        let valA = a[key];
-        let valB = b[key];
+        let valA, valB;
 
-        if (key === 'TripDate') {
-            valA = valA?.seconds || 0;
-            valB = valB?.seconds || 0;
+        switch (key) {
+            case 'StationBegin':
+                valA = a.StationBeginCode;
+                valB = b.StationBeginCode;
+                break;
+            case 'StationEnd':
+                valA = a.StationEndCode;
+                valB = b.StationEndCode;
+                break;
+            case 'TripDate':
+                valA = a.TripDate?.seconds || 0;
+                valB = b.TripDate?.seconds || 0;
+                break;
+            default:
+                valA = a[key];
+                valB = b[key];
+                break;
         }
 
         const comparison = String(valA ?? '').localeCompare(String(valB ?? ''), undefined, { numeric: true });
         return direction === 'ascending' ? comparison : -comparison;
     });
+
+    if (enriched.length === 0) {
+        passengersTableBody.innerHTML = '';
+        state.selectedPassengerId = null;
+    }
+
+    if (state.selectedPassengerId && !enriched.some(p => p.id === state.selectedPassengerId)) {
+        state.selectedPassengerId = null;
+    }
 
     passengersTableHead.querySelectorAll('th[data-sort-key]').forEach(th => {
         th.innerHTML = `${th.textContent.replace(/[▲▼]/g, '').trim()} ${sortConfig.key === th.dataset.sortKey ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}`;
@@ -109,7 +157,7 @@ function renderPassengerTable(tripId) {
     passengersTableBody.innerHTML = enriched.map(p => {
         const dateCell = tripId === 'all' ? `<td class="p-3 text-sm">${getDisplayValue(null, 'Date', p.TripDate)}</td>` : '';
         return `
-            <tr data-id="${p.id}" class="cursor-pointer hover:bg-gray-100 ${p.Place ? 'bg-yellow-100' : (p.Status ? 'bg-green-50' : '')} ${p.Ticket ? 'font-bold' : ''} border-b">
+            <tr data-id="${p.id}" data-status="${p.Status}" data-place="${p.Place}" class="cursor-pointer ${p.Ticket ? 'font-bold' : ''} border-b">
                 ${dateCell}
                 <td class="p-3 text-sm">${p.ClientName || ''}</td>
                 <td class="p-3 text-sm">${p.StationBegin}</td>
@@ -124,6 +172,8 @@ function renderPassengerTable(tripId) {
             </tr>
         `;
     }).join('');
+
+    updateRowHighlights();
 }
 
 async function handleCopyPassenger(passengerId) {
@@ -141,6 +191,41 @@ async function togglePassengerStatus(passengerId) {
     const passenger = (state.collections.Passengers || []).find(p => p.id === passengerId);
     if (passenger) {
         await setDoc(doc(db, 'Passengers', passengerId), { Status: !passenger.Status }, { merge: true });
+    }
+}
+
+function handleKeyboardNavigation(e) {
+    if (state.currentView !== 'main' || document.querySelector('.modal-overlay')) return;
+
+    const rows = Array.from(passengersTableBody.querySelectorAll('tr[data-id]'));
+    if (rows.length === 0) return;
+
+    if (e.key === 'Enter' && state.selectedPassengerId) {
+        e.preventDefault();
+        openPassengerModal(state.selectedPassengerId);
+        return;
+    }
+
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+
+    let currentIndex = -1;
+    if (state.selectedPassengerId) {
+        currentIndex = rows.findIndex(row => row.dataset.id === state.selectedPassengerId);
+    }
+
+    let nextIndex = currentIndex;
+    if (e.key === 'ArrowDown') {
+        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
+    }
+
+    const nextRow = rows[nextIndex];
+    if (nextRow) {
+        state.selectedPassengerId = nextRow.dataset.id;
+        updateRowHighlights();
+        nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
@@ -231,7 +316,6 @@ export function initMainView() {
         const button = target.closest('button');
 
         if (button) {
-            // A button inside the row was clicked, handle the specific button action
             if (button.classList.contains('edit-passenger-btn')) {
                 openPassengerModal(id);
             } else if (button.classList.contains('delete-passenger-btn')) {
@@ -244,8 +328,17 @@ export function initMainView() {
                 await togglePassengerStatus(id);
             }
         } else {
-            // The row itself was clicked (but not a button), open the edit modal
-            openPassengerModal(id);
+            state.selectedPassengerId = id;
+            updateRowHighlights();
         }
     });
+
+    passengersTableBody.addEventListener('dblclick', (e) => {
+        const row = e.target.closest('tr');
+        if (row && row.dataset.id) {
+            openPassengerModal(row.dataset.id);
+        }
+    });
+
+    document.addEventListener('keydown', handleKeyboardNavigation);
 }

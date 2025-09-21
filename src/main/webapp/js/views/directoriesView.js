@@ -7,6 +7,8 @@ import { openDirectoryModal, openConfirmModal } from '../ui/modal.js';
 
 let directoriesPageView, directoryTabs, directoryTitle, directorySearchInput, addDirectoryItemBtn, directoryTableContainer, stationCountryFilter;
 
+state.selectedDirectoryItemId = null;
+
 const DIRECTORY_ICONS = {
     Clients: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
     Trips: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
@@ -18,6 +20,19 @@ const DIRECTORY_ICONS = {
     Towns: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>`,
     Country: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>`,
 };
+
+function updateRowHighlights() {
+    const rows = directoryTableContainer.querySelectorAll('tbody tr[data-id]');
+    rows.forEach(row => {
+        if (row.dataset.id === state.selectedDirectoryItemId) {
+            row.classList.add('bg-blue-200');
+            row.classList.remove('hover:bg-gray-50');
+        } else {
+            row.classList.remove('bg-blue-200');
+            row.classList.add('hover:bg-gray-50');
+        }
+    });
+}
 
 export function renderDirectoryPage() {
     if (!directoriesPageView) return;
@@ -97,6 +112,13 @@ function renderDirectoryTable() {
         });
     }
 
+    if (data.length === 0) {
+        state.selectedDirectoryItemId = null;
+    }
+    if (state.selectedDirectoryItemId && !data.some(d => d.id === state.selectedDirectoryItemId)) {
+        state.selectedDirectoryItemId = null;
+    }
+
     // Rendering HTML
     const headers = Object.keys(directory.fields).map(k =>
         `<th class="p-3 text-sm font-semibold tracking-wide cursor-pointer" data-sort-key="${k}">${directory.fields[k].label} ${key === k ? (direction === 'ascending' ? '▲' : '▼') : ''}</th>`
@@ -111,7 +133,7 @@ function renderDirectoryTable() {
         }).join('');
 
         return `
-            <tr data-id="${item.id}" data-collection="${state.currentDirectory}" class="cursor-pointer border-b border-gray-200 hover:bg-gray-50">
+            <tr data-id="${item.id}" data-collection="${state.currentDirectory}" class="cursor-pointer border-b border-gray-200">
                 ${cells}
                 <td class="p-3">
                     <button class="edit-item-btn text-gray-500 hover:text-blue-600" data-id="${item.id}" data-collection="${state.currentDirectory}">✏️</button>
@@ -121,6 +143,42 @@ function renderDirectoryTable() {
     }).join('');
 
     directoryTableContainer.innerHTML = `<table class="w-full text-left"><thead class="bg-gray-50 border-b-2 border-gray-200"><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    updateRowHighlights();
+}
+
+function handleKeyboardNavigation(e) {
+    if (state.currentView !== 'directories' || document.querySelector('.modal-overlay')) return;
+
+    const rows = Array.from(directoryTableContainer.querySelectorAll('tbody tr[data-id]'));
+    if (rows.length === 0) return;
+
+    if (e.key === 'Enter' && state.selectedDirectoryItemId) {
+        e.preventDefault();
+        openDirectoryModal(state.currentDirectory, state.selectedDirectoryItemId);
+        return;
+    }
+
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+
+    let currentIndex = -1;
+    if (state.selectedDirectoryItemId) {
+        currentIndex = rows.findIndex(row => row.dataset.id === state.selectedDirectoryItemId);
+    }
+
+    let nextIndex = currentIndex;
+    if (e.key === 'ArrowDown') {
+        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
+    }
+
+    const nextRow = rows[nextIndex];
+    if (nextRow) {
+        state.selectedDirectoryItemId = nextRow.dataset.id;
+        updateRowHighlights();
+        nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 export function initDirectoriesView() {
@@ -168,6 +226,7 @@ export function initDirectoriesView() {
             directorySearchInput.value = '';
             state.directorySearchTerm = '';
             state.stationCountryFilter = 'all';
+            state.selectedDirectoryItemId = null; // Reset selection on tab change
             renderDirectoryTabs();
             renderDirectoryPage();
         }
@@ -223,8 +282,16 @@ export function initDirectoriesView() {
             }
             return; 
         }
+        
+        state.selectedDirectoryItemId = id;
+        updateRowHighlights();
+    });
 
-        openDirectoryModal(collection, id);
+    directoryTableContainer.addEventListener('dblclick', (e) => {
+        const row = e.target.closest('tr[data-id]');
+        if (row) {
+            openDirectoryModal(row.dataset.collection, row.dataset.id);
+        }
     });
 
     directoryTableContainer.addEventListener('blur', async (e) => {
@@ -245,4 +312,6 @@ export function initDirectoriesView() {
             }
         }
     }, true);
+
+    document.addEventListener('keydown', handleKeyboardNavigation);
 }

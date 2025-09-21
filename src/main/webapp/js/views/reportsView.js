@@ -68,11 +68,76 @@ function getTripData(tripId, collectionName = 'Passengers') {
     return { trip, route, bus, driver, country, items };
 }
 
-// Placeholder functions for new parcel reports
 function generateRomaReport() {
-    openInfoModal("Звіт 'Roma' ще не реалізовано.");
-    reportDisplayArea.innerHTML = '';
-    printReportBtn.classList.add('hidden');
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod !== 0) {
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів з України в ЄС.</p>';
+        printReportBtn.classList.add('hidden');
+        return;
+    }
+
+    const parcels = allParcels.filter(p => p.stationEnd?.Cod >= 2000 && p.stationEnd?.Cod <= 2099);
+
+    const groupedByStation = parcels.reduce((groups, p) => {
+        const stationId = p.stationEnd?.id || 'unknown';
+        if (!groups[stationId]) {
+            groups[stationId] = {
+                station: p.stationEnd,
+                parcels: []
+            };
+        }
+        groups[stationId].parcels.push(p);
+        return groups;
+    }, {});
+
+    const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => {
+        const codeA = groupedByStation[a].station?.Cod || 0;
+        const codeB = groupedByStation[b].station?.Cod || 0;
+        return codeA - codeB;
+    });
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; text-align: left; margin-bottom: 1rem;">
+            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+            <span class="ml-4">${route?.Name || ''}</span>
+        </div>
+        <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse;">
+            <tbody>`;
+
+    if (parcels.length === 0) {
+        reportHTML = '<p class="text-center text-gray-500">Посилок, що відповідають критеріям (код зупинки 2000-2099), не знайдено.</p>';
+    } else {
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            const stationName = group.station?.Name || 'Невідомо';
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold; text-align: right;">${stationName}</td></tr>`;
+            const groupParcels = group.parcels;
+            groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            groupParcels.forEach((p, index) => {
+                const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+                const moneyCellContent = p.Paid ? '<strong>опл.</strong>' : (p.Money || '');
+                reportHTML += `
+                <tr class="passenger-row">
+                    <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${phones}</td>
+                    <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
+                    <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
+                    <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${moneyCellContent}</td>
+                </tr>`;
+            });
+             reportHTML += `<tr><td colspan="7" style="border-bottom: 2px solid #000; padding: 0;"></td></tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    printReportBtn.classList.toggle('hidden', parcels.length === 0);
 }
 
 function generateParcelDepartureCitiesReport() {
@@ -148,19 +213,194 @@ function generateParcelDepartureCitiesReport() {
 }
 
 function generateKropyvnytskyiReport() {
-    openInfoModal("Звіт 'Кропивницький' ще не реалізовано.");
-    reportDisplayArea.innerHTML = '';
-    printReportBtn.classList.add('hidden');
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod === 0) { // Should be a trip TO Ukraine
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
+        printReportBtn.classList.add('hidden');
+        return;
+    }
+
+    const kropParcels = allParcels.filter(p => p.townEnd?.Name === 'Кропивницький');
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: baseline;">
+            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')} ${route?.Name || ''}</span>
+            <h3 style="font-size: 14pt; font-weight: bold;">Кропивницький</h3>
+        </div>`;
+
+    if (kropParcels.length === 0) {
+        reportHTML += '<p class="text-center text-gray-500">Посилок до м. Кропивницький для цього рейсу не знайдено.</p>';
+    } else {
+        reportHTML += `
+        <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2;">
+                 <tr style="font-weight: normal; text-align: center;">
+                    <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border-right: 1px solid #ccc;">№</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center;">Телефон</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border-left: 1px solid #ccc;">Багаж</th>
+                    <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center;">Вага</th>
+                    <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border-left: 1px solid #ccc;">Кошти</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        kropParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+        kropParcels.forEach((p, index) => {
+            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+            const paymentStatus = p.Paid ? '' : '<strong>не опл.</strong>';
+            reportHTML += `
+            <tr class="passenger-row">
+                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
+                <td style="white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top;">${phones}</td>
+                <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
+                <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
+                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${paymentStatus}</td>
+            </tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    printReportBtn.classList.toggle('hidden', kropParcels.length === 0);
 }
+
 function generateNovaPoshtaReport() {
-    openInfoModal("Звіт 'Нова пошта' ще не реалізовано.");
-    reportDisplayArea.innerHTML = '';
-    printReportBtn.classList.add('hidden');
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod === 0) { // Should be a trip TO Ukraine
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
+        printReportBtn.classList.add('hidden');
+        return;
+    }
+
+    const npParcels = allParcels.filter(p => p.client?.NPNum);
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: baseline;">
+            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')} ${route?.Name || ''}</span>
+            <h3 style="font-size: 14pt; font-weight: bold;">Нова Пошта</h3>
+        </div>`;
+
+    if (npParcels.length === 0) {
+        reportHTML += '<p class="text-center text-gray-500">Посилок з вказаною Новою Поштою для цього рейсу не знайдено.</p>';
+    } else {
+        reportHTML += `
+        <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2;">
+                 <tr style="font-weight: normal; text-align: center;">
+                    <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border-right: 1px solid #ccc;">№</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center;">Телефон</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border-left: 1px solid #ccc;">Місто отримання</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center;">Нова пошта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border-left: 1px solid #ccc;">Багаж</th>
+                    <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center;">Вага</th>
+                    <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border-left: 1px solid #ccc;">Кошти</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        npParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+        npParcels.forEach((p, index) => {
+            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+            const paymentStatus = p.Paid ? '' : '<strong>не опл.</strong>';
+            reportHTML += `
+            <tr class="passenger-row">
+                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
+                <td style="white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top;">${phones}</td>
+                <td style="white-space: nowrap; vertical-align: top; border-left: 1px solid #ccc;">${p.townEnd?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top;">${p.client?.NPNum || ''}</td>
+                <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
+                <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
+                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${paymentStatus}</td>
+            </tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    printReportBtn.classList.toggle('hidden', npParcels.length === 0);
 }
+
 function generateParcelArrivalCitiesReport() {
-    openInfoModal("Звіт 'Отримання за містами' ще не реалізовано.");
-    reportDisplayArea.innerHTML = '';
-    printReportBtn.classList.add('hidden');
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod === 0) { // Should be a trip TO Ukraine
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
+        printReportBtn.classList.add('hidden');
+        return;
+    }
+
+    const parcelsToReport = allParcels.filter(p => !p.client?.NPNum && p.townEnd?.Name !== 'Кропивницький');
+
+    const groupedByTown = parcelsToReport.reduce((groups, p) => {
+        const townId = p.townEnd?.id || 'unknown';
+        if (!groups[townId]) {
+            groups[townId] = {
+                town: p.townEnd,
+                parcels: []
+            };
+        }
+        groups[townId].parcels.push(p);
+        return groups;
+    }, {});
+
+    const sortedGroupKeys = Object.keys(groupedByTown).sort((a, b) => {
+        const nameA = groupedByTown[a].town?.Name || '';
+        const nameB = groupedByTown[b].town?.Name || '';
+        return nameA.localeCompare(nameB);
+    });
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; text-align: left; margin-bottom: 1rem;">
+            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+            <span class="ml-4">${route?.Name || ''}</span>
+        </div>
+        <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse;">
+            <tbody>`;
+
+    if (parcelsToReport.length === 0) {
+        reportHTML = '<p class="text-center text-gray-500">Посилок (без вказаної Нової Пошти та м. Кропивницький) для цього рейсу не знайдено.</p>';
+    } else {
+        sortedGroupKeys.forEach(townId => {
+            const group = groupedByTown[townId];
+            const townName = group.town?.Name || 'Невідомо';
+            reportHTML += `<tr class="group-header-row"><td colspan="6" style="padding-top: 1rem; font-weight: bold; text-align: right;">${townName}</td></tr>`;
+            const groupParcels = group.parcels;
+            groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            groupParcels.forEach((p, index) => {
+                const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+                const paymentStatus = p.Paid ? '' : '<strong>не опл.</strong>';
+                reportHTML += `
+                <tr class="passenger-row">
+                    <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
+                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${phones}</td>
+                    <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
+                    <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
+                    <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${paymentStatus}</td>
+                </tr>`;
+            });
+             reportHTML += `<tr><td colspan="6" style="border-bottom: 2px solid #000; padding: 0;"></td></tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    printReportBtn.classList.toggle('hidden', parcelsToReport.length === 0);
 }
 
 function generateCallListReport() {

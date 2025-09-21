@@ -2,11 +2,14 @@
 import { state } from '../state.js';
 import { getDisplayValue } from '../utils.js';
 import { openParcelModal, openConfirmModal } from '../ui/modal.js';
-import { doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from '../firebase.js';
 
 let parcelsPageView, parcelsTableContainer, searchInput;
 let searchTimeout = null;
+
+// Initialize selectedParcelId in the state
+state.selectedParcelId = null;
 
 function getFilteredParcels() {
     let parcels = (state.collections.Parcels || []).filter(p => state.selectedTripId === 'all' || p.TripId === state.selectedTripId);
@@ -23,10 +26,54 @@ function getFilteredParcels() {
             (getDisplayValue('Parcels', 'TripId', p.TripId) || '').toLowerCase().includes(filter) ||
             (p.Name || '').toLowerCase().includes(filter) ||
             (p.Money || '').toLowerCase().includes(filter) ||
-            (p.ClientNP || '').toLowerCase().includes(filter)
+            (p.ClientNP || '').toLowerCase().includes(filter) ||
+            ((p.Weight || '').toString().toLowerCase().includes(filter))
         );
     }
     return parcels;
+}
+
+async function handleNpCellEdit(e) {
+    const td = e.target.closest('td[data-field="ClientNP"]');
+    if (!td || td.querySelector('input')) {
+        return; // Not a ClientNP cell or already in edit mode
+    }
+
+    const clientId = td.dataset.clientId;
+    if (!clientId) return;
+
+    const originalValue = td.textContent.trim();
+    td.innerHTML = `<input type="text" class="w-full bg-yellow-100 border border-gray-400 rounded px-1" value="${originalValue}">`;
+    const input = td.querySelector('input');
+    input.focus();
+    input.select();
+
+    const saveChanges = async () => {
+        const newValue = input.value.trim();
+        input.removeEventListener('blur', saveChanges);
+        td.innerHTML = newValue;
+
+        if (newValue !== originalValue) {
+            try {
+                const clientRef = doc(db, 'Clients', clientId);
+                await updateDoc(clientRef, { NPNum: newValue });
+            } catch (error) {
+                console.error("Error updating NPNum: ", error);
+                td.innerHTML = originalValue;
+                alert(`Помилка при оновленні Нової Пошти: ${error.message}`);
+            }
+        }
+    };
+
+    input.addEventListener('blur', saveChanges);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            saveChanges();
+        } else if (e.key === 'Escape') {
+            input.removeEventListener('blur', saveChanges);
+            td.innerHTML = originalValue;
+        }
+    });
 }
 
 function handleTableActions(e) {
@@ -48,8 +95,71 @@ function handleTableActions(e) {
             });
         }
     } else {
-        openParcelModal(parcelId);
+        // Row click now handles selection
+        state.selectedParcelId = parcelId;
+        updateRowHighlights();
     }
+}
+
+function handleRowDblClick(e) {
+    const row = e.target.closest('tr');
+    if (row && row.dataset.id) {
+        openParcelModal(row.dataset.id);
+    }
+}
+
+function handleKeyboardNavigation(e) {
+    if (state.currentView !== 'parcels' || document.querySelector('.modal-overlay')) return;
+
+    const rows = Array.from(parcelsTableContainer.querySelectorAll('tbody tr[data-id]'));
+    if (rows.length === 0) return;
+
+    if (e.key === 'Enter' && state.selectedParcelId) {
+        e.preventDefault();
+        openParcelModal(state.selectedParcelId);
+        return;
+    }
+
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+
+    let currentIndex = -1;
+    if (state.selectedParcelId) {
+        currentIndex = rows.findIndex(row => row.dataset.id === state.selectedParcelId);
+    }
+
+    let nextIndex = currentIndex;
+    if (e.key === 'ArrowDown') {
+        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
+    }
+
+    const nextRow = rows[nextIndex];
+    if (nextRow) {
+        state.selectedParcelId = nextRow.dataset.id;
+        updateRowHighlights();
+        nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function updateRowHighlights() {
+    const rows = parcelsTableContainer.querySelectorAll('tbody tr[data-id]');
+    rows.forEach(row => {
+        const parcelId = row.dataset.id;
+        const isSelected = state.selectedParcelId === parcelId;
+        const isUnpaid = row.dataset.unpaid === 'true';
+
+        row.classList.remove('bg-blue-200', 'bg-pink-100', 'hover:bg-gray-100');
+
+        if (isSelected) {
+            row.classList.add('bg-blue-200');
+        } else if (isUnpaid) {
+            row.classList.add('bg-pink-100');
+        } else {
+            row.classList.add('hover:bg-gray-100');
+        }
+    });
 }
 
 function handleSort(e) {
@@ -110,27 +220,35 @@ export function initParcelsView() {
     });
 
     parcelsTableContainer.addEventListener('click', handleTableActions);
+    parcelsTableContainer.addEventListener('dblclick', handleRowDblClick);
+    parcelsTableContainer.addEventListener('click', handleNpCellEdit);
+    document.addEventListener('keydown', handleKeyboardNavigation);
 }
 
 export function renderParcelsPage() {
     if (!parcelsPageView) return;
+
+    const selectedTrip = (state.collections.Trips || []).find(t => t.id === state.selectedTripId);
+    const route = selectedTrip ? (state.collections.Routes || []).find(r => r.id === selectedTrip.RouteId) : null;
+    const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+    const isFromUkraine = country ? country.Cod === 0 : false;
 
     const filteredParcels = getFilteredParcels();
 
     let enrichedParcels = filteredParcels.map(p => {
         const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
         const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
-        const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
-        const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+        const routeOfParcel = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
+        const countryOfParcel = routeOfParcel ? (state.collections.Country || []).find(c => c.id === routeOfParcel.CountryId) : null;
 
         let stationBegin = '—';
         let stationEnd = '—';
 
-        if (client && country) {
+        if (client && countryOfParcel) {
             const townUA = getDisplayValue('Clients', 'TownIdUA', client.TownIdUA);
             const townEU = getDisplayValue('Clients', 'TownIdEU', client.TownIdEU);
-            stationBegin = country.Cod === 0 ? townUA : townEU;
-            stationEnd = country.Cod === 0 ? townEU : townUA;
+            stationBegin = countryOfParcel.Cod === 0 ? townUA : townEU;
+            stationEnd = countryOfParcel.Cod === 0 ? townEU : townUA;
         }
         return {
             ...p,
@@ -152,28 +270,45 @@ export function renderParcelsPage() {
 
     if (enrichedParcels.length === 0) {
         parcelsTableContainer.innerHTML = '<p class="text-center text-gray-500 py-8">Для обраного рейсу посилок не знайдено.</p>';
+        state.selectedParcelId = null; // Clear selection if no parcels
         return;
     }
+
+    // Check if selected parcel is still in the list
+    if (state.selectedParcelId && !enrichedParcels.some(p => p.id === state.selectedParcelId)) {
+        state.selectedParcelId = null;
+    }
+
+    const baggageHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Name">Багаж</th>`;
+    const weightHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Weight">Вага</th>`;
+    const npHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientNP">Нова Пошта</th>`;
+
+    const headerCells = `
+        <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientName">Клієнт</th>
+        <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationBegin">Відправлення</th>
+        <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationEnd">Отримання</th>
+        ${isFromUkraine
+        ? baggageHeader + weightHeader
+        : npHeader + baggageHeader
+    }
+        <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Money">Кошти</th>
+        <th class="py-3 px-6 text-center">Дії</th>
+    `;
 
     const tableHTML = `
         <table class="min-w-full bg-white">
             <thead id="parcels-table-head" class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
                 <tr>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientName">Клієнт</th>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationBegin">Відправлення</th>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationEnd">Отримання</th>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Name">Багаж</th>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Money">Кошти</th>
-                    <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientNP">Нова Пошта</th>
-                    <th class="py-3 px-6 text-center">Дії</th>
+                    ${headerCells}
                 </tr>
             </thead>
             <tbody class="text-gray-600 text-sm font-light">
-                ${enrichedParcels.map(p => renderParcelRow(p)).join('')}
+                ${enrichedParcels.map(p => renderParcelRow(p, isFromUkraine)).join('')}
             </tbody>
         </table>
     `;
     parcelsTableContainer.innerHTML = tableHTML;
+    updateRowHighlights();
 
     const thead = document.getElementById('parcels-table-head');
     thead.removeEventListener('click', handleSort);
@@ -189,18 +324,27 @@ export function renderParcelsPage() {
     });
 }
 
-function renderParcelRow(parcel) {
+function renderParcelRow(parcel, isFromUkraine) {
     const isUnpaid = parcel.Paid === false;
-    const rowClass = isUnpaid ? 'bg-pink-100' : 'border-b border-gray-200 hover:bg-gray-100';
+
+    const baggageCell = `<td class="py-3 px-6 text-left">${parcel.Name || ''}</td>`;
+    const weightCell = `<td class="py-3 px-6 text-left">${parcel.Weight || ''}</td>`;
+    const npCell = `<td class="py-3 px-6 text-left" data-field="ClientNP" data-client-id="${parcel.ClientId}">${parcel.ClientNP || ''}</td>`;
+
+    const dataCells = `
+        <td class="py-3 px-6 text-left whitespace-nowrap">${parcel.ClientName || 'N/A'}</td>
+        <td class="py-3 px-6 text-left">${parcel.StationBegin}</td>
+        <td class="py-3 px-6 text-left">${parcel.StationEnd}</td>
+        ${isFromUkraine
+        ? baggageCell + weightCell
+        : npCell + baggageCell
+    }
+        <td class="py-3 px-6 text-left">${parcel.Money || ''}</td>
+    `;
 
     return `
-        <tr class="${rowClass} cursor-pointer" data-id="${parcel.id}">
-            <td class="py-3 px-6 text-left whitespace-nowrap">${parcel.ClientName || 'N/A'}</td>
-            <td class="py-3 px-6 text-left">${parcel.StationBegin}</td>
-            <td class="py-3 px-6 text-left">${parcel.StationEnd}</td>
-            <td class="py-3 px-6 text-left">${parcel.Name || ''}</td>
-            <td class="py-3 px-6 text-left">${parcel.Money || ''}</td>
-            <td class="py-3 px-6 text-left">${parcel.ClientNP || ''}</td>
+        <tr class="cursor-pointer border-b border-gray-200" data-id="${parcel.id}" data-unpaid="${isUnpaid}">
+            ${dataCells}
             <td class="py-3 px-6 text-center">
                 <div class="flex item-center justify-center">
                     <button class="w-6 h-6 text-gray-500 hover:text-blue-600" data-action="edit" title="Редагувати"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg></button>

@@ -8,6 +8,20 @@ import { generateFormField } from './forms.js';
 
 const modalContainer = document.getElementById('modal-container');
 
+// Global handler for the Escape key to close any active modal
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modals = modalContainer.querySelectorAll('.modal-overlay');
+        if (modals.length > 0) {
+            // Get the last modal, which is the top-most one
+            const topModal = modals[modals.length - 1];
+            e.preventDefault();
+            e.stopPropagation();
+            topModal.remove();
+        }
+    }
+}, true); // Use capturing to ensure this runs before other listeners can stop propagation
+
 export function openInfoModal(message) {
     const modalHTML = `
         <div class="modal-overlay">
@@ -284,14 +298,6 @@ function setupModal(modalElement, submitHandler, focusTargetId = null) {
     }, 50);
 
     modalElement.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (!modalElement.querySelector('.autocomplete-results:not(.hidden)')) {
-                e.preventDefault();
-                modalElement.remove();
-                return;
-            }
-        }
-
         if (e.key === 'Tab') {
             if (e.shiftKey) {
                 if (document.activeElement === firstFocusableElement) {

@@ -44,7 +44,7 @@ export const DIRECTORIES = {
             StationIdUA: { label: 'Зупинка UA', type: 'fk' },
             TownIdEU: { label: 'Місто EU', type: 'fk' },
             StationIdEU: { label: 'Зупинка EU', type: 'fk' },
-            NPNum: { label: 'Нова Пошта', type: 'number' },
+            NPNum: { label: 'Нова Пошта', type: 'text' },
         }
     },
     Trips: {

@@ -7,7 +7,7 @@ import { openInfoModal } from '../ui/modal.js';
 let reportsPageView, reportTypeTripBtn, reportTypeParcelBtn, reportTypeAgentBtn, tripReportsSection, parcelReportsSection, agentReportSection,
     generateCallListBtn, generateDepartureListBtn, generateArrivalListBtn, generateTransitListBtn,
     generateRomaReportBtn, generateParcelDepartureCitiesReportBtn, generateKropyvnytskyiReportBtn, generateNovaPoshtaReportBtn, generateParcelArrivalCitiesReportBtn,
-    generateAgentReportBtn, exportExcelBtn, printReportBtn, reportDisplayArea;
+    generateAgentReportBtn, exportExcelBtn, reportDisplayArea;
 
 function getTripData(tripId, collectionName = 'Passengers') {
     if (!tripId || tripId === 'all') {
@@ -75,7 +75,7 @@ function generateRomaReport() {
 
     if (country?.Cod !== 0) {
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів з України в ЄС.</p>';
-        printReportBtn.classList.add('hidden');
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -137,7 +137,7 @@ function generateRomaReport() {
     }
 
     reportDisplayArea.innerHTML = reportHTML;
-    printReportBtn.classList.toggle('hidden', parcels.length === 0);
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', parcels.length === 0);
 }
 
 function generateParcelDepartureCitiesReport() {
@@ -147,7 +147,7 @@ function generateParcelDepartureCitiesReport() {
 
     if (country?.Cod !== 0) {
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів з України в ЄС.</p>';
-        printReportBtn.classList.add('hidden');
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -209,7 +209,7 @@ function generateParcelDepartureCitiesReport() {
     }
 
     reportDisplayArea.innerHTML = reportHTML;
-    printReportBtn.classList.toggle('hidden', parcels.length === 0);
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', parcels.length === 0);
 }
 
 function generateKropyvnytskyiReport() {
@@ -219,7 +219,7 @@ function generateKropyvnytskyiReport() {
 
     if (country?.Cod === 0) { // Should be a trip TO Ukraine
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
-        printReportBtn.classList.add('hidden');
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -267,7 +267,7 @@ function generateKropyvnytskyiReport() {
     }
 
     reportDisplayArea.innerHTML = reportHTML;
-    printReportBtn.classList.toggle('hidden', kropParcels.length === 0);
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', kropParcels.length === 0);
 }
 
 function generateNovaPoshtaReport() {
@@ -277,7 +277,7 @@ function generateNovaPoshtaReport() {
 
     if (country?.Cod === 0) { // Should be a trip TO Ukraine
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
-        printReportBtn.classList.add('hidden');
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -329,7 +329,7 @@ function generateNovaPoshtaReport() {
     }
 
     reportDisplayArea.innerHTML = reportHTML;
-    printReportBtn.classList.toggle('hidden', npParcels.length === 0);
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', npParcels.length === 0);
 }
 
 function generateParcelArrivalCitiesReport() {
@@ -339,7 +339,7 @@ function generateParcelArrivalCitiesReport() {
 
     if (country?.Cod === 0) { // Should be a trip TO Ukraine
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
-        printReportBtn.classList.add('hidden');
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -400,7 +400,7 @@ function generateParcelArrivalCitiesReport() {
     }
 
     reportDisplayArea.innerHTML = reportHTML;
-    printReportBtn.classList.toggle('hidden', parcelsToReport.length === 0);
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', parcelsToReport.length === 0);
 }
 
 function generateCallListReport() {
@@ -450,7 +450,7 @@ function generateCallListReport() {
             </div>
         </div>
         <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
-    printReportBtn.classList.remove('hidden');
+    tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
 function generateDepartureReport() {
@@ -519,7 +519,7 @@ function generateDepartureReport() {
             </div>
         </div>
         <table class="report-table departure-report-table"><tbody>${tableBodyHTML}</tbody></table>`;
-    printReportBtn.classList.remove('hidden');
+    tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
 function generateArrivalReport() {
@@ -574,7 +574,7 @@ function generateArrivalReport() {
             </div>
         </div>
         <table class="report-table"><tbody>${tableBodyHTML}</tbody></table>`;
-    printReportBtn.classList.remove('hidden');
+    tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
 function generateTransitReport() {
@@ -588,7 +588,7 @@ function generateTransitReport() {
 
     if (transitPassengers.length === 0) {
         reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Транзитних пасажирів на цьому рейсі не знайдено.</p>';
-        printReportBtn.classList.add('hidden');
+        tripReportsSection.querySelector('.print-report-btn').classList.add('hidden');
         return;
     }
 
@@ -611,7 +611,7 @@ function generateTransitReport() {
             </div>
         </div>
         <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
-    printReportBtn.classList.remove('hidden');
+    tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
 function generateAgentReport() {
@@ -697,6 +697,7 @@ function generateAgentReport() {
         : '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
 
     exportExcelBtn.classList.toggle('hidden', reportData.length === 0);
+    agentReportSection.querySelector('.print-report-btn').classList.toggle('hidden', reportData.length === 0);
 }
 
 
@@ -824,7 +825,7 @@ export function updateReportView() {
 
     reportDisplayArea.innerHTML = '';
     exportExcelBtn.classList.add('hidden');
-    printReportBtn.classList.add('hidden');
+    reportsPageView.querySelectorAll('.print-report-btn').forEach(btn => btn.classList.add('hidden'));
 }
 
 export function initReportsView() {
@@ -847,7 +848,7 @@ export function initReportsView() {
         </div>
         
         <div id="trip-reports-section">
-            <div class="flex flex-wrap items-center gap-4 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div class="flex items-center">
                     <label for="reports-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
                     <div class="relative">
@@ -873,6 +874,10 @@ export function initReportsView() {
                         <span>Транзит</span>
                     </button>
                 </div>
+                <button class="print-report-btn hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
+                    <span>Друк</span>
+                </button>
             </div>
         </div>
 
@@ -900,7 +905,7 @@ export function initReportsView() {
                         <span>Отримання за містами</span>
                     </button>
                 </div>
-                 <button id="print-report-btn" class="hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                 <button class="print-report-btn hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
                     <span>Друк</span>
                 </button>
@@ -925,10 +930,16 @@ export function initReportsView() {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     <span>Сформувати</span>
                 </button>
-                <button id="export-excel-btn" class="hidden ml-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                    <span>Export Excel</span>
-                </button>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="export-excel-btn" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                        <span>Export Excel</span>
+                    </button>
+                    <button class="print-report-btn hidden bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
+                        <span>Друк</span>
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -953,7 +964,6 @@ export function initReportsView() {
     generateParcelArrivalCitiesReportBtn = document.getElementById('generate-parcel-arrival-cities-report-btn');
     generateAgentReportBtn = document.getElementById('generate-agent-report-btn');
     exportExcelBtn = document.getElementById('export-excel-btn');
-    printReportBtn = document.getElementById('print-report-btn');
     reportDisplayArea = document.getElementById('report-display-area');
 
     // Setup event listeners
@@ -975,7 +985,12 @@ export function initReportsView() {
     generateAgentReportBtn.addEventListener('click', generateAgentReport);
 
     exportExcelBtn.addEventListener('click', exportAgentReportToExcel);
-    printReportBtn.addEventListener('click', handlePrint);
+    
+    reportsPageView.addEventListener('click', (e) => {
+        if (e.target.closest('.print-report-btn')) {
+            handlePrint();
+        }
+    });
 
     // Initialize date pickers
     new Datepicker(document.getElementById('start-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });

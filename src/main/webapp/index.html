@@ -14,6 +14,28 @@
     <script src="js/xlsx.full.min.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        @keyframes drive {
+            from {
+                transform: translateX(-200px);
+            }
+            to {
+                transform: translateX(110vw);
+            }
+        }
+
+        #animation-bus {
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 150px; /* Adjust size as needed */
+            height: auto;
+            z-index: 1;
+            animation: drive 15s linear infinite;
+            animation-delay: 2s; /* Start after a delay */
+            opacity: 0.1; /* Make it subtle */
+        }
+    </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -28,9 +50,12 @@
 
 <div id="app-view" class="hidden">
     <header class="bg-white shadow-md relative overflow-hidden">
+         <svg id="animation-bus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400">
+            <path d="M18.91 2.26a.75.75 0 00-1.06-.22L16 3.52V2.75a.75.75 0 00-1.5 0v2.34l-1.7-1.02a.75.75 0 00-.8.2l-1.5 2.5a.75.75 0 00.1.95l1.6 1.28H3a.75.75 0 00-.75.75v10.5c0 .414.336.75.75.75h.75a2.25 2.25 0 104.5 0h6a2.25 2.25 0 104.5 0h.75a.75.75 0 00.75-.75V9.3l1.6-1.28a.75.75 0 00.1-.95l-1.5-2.5a.75.75 0 00-.8-.2L18 5.42V2.75a.75.75 0 00-.75-.75h-1.5a.75.75 0 00-.75.75v.08L18.91 2.26zM6 18.5a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+        </svg>
         <div class="container mx-auto px-4 py-3 flex justify-between items-center relative" style="z-index: 2;">
             <h1 id="home-link" class="text-xl font-bold text-gray-700 cursor-pointer">
-                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.2.2</span>
+                Passenger Booking <span class="font-normal text-[8pt] align-middle">v.1.8</span>
             </h1>
             <nav class="flex items-center gap-2">
                 <button data-view="main" class="nav-btn flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200">

@@ -137,6 +137,14 @@ function renderPassengerTable(tripId) {
         }
 
         const comparison = String(valA ?? '').localeCompare(String(valB ?? ''), undefined, { numeric: true });
+
+        if (comparison === 0 && (key === 'StationBegin' || key === 'StationEnd')) {
+            const nameA = a.ClientName || '';
+            const nameB = b.ClientName || '';
+            const secondaryComparison = nameA.localeCompare(nameB);
+            return direction === 'ascending' ? secondaryComparison : -secondaryComparison;
+        }
+
         return direction === 'ascending' ? comparison : -comparison;
     });
 

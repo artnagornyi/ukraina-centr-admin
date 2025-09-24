@@ -137,7 +137,16 @@ function switchView(viewName) {
 // --- GLOBAL EVENT LISTENERS ---
 function setupGlobalEventListeners() {
     homeLink.addEventListener('click', () => switchView('main'));
-    navButtons.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+    document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
+    });
+
+    const exitBtn = document.getElementById('exit-btn');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', () => {
+            window.close();
+        });
+    }
 
     document.addEventListener('keydown', (e) => {
         const modalIsOpen = document.querySelector('.modal-overlay');

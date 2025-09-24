@@ -135,4 +135,5 @@ export const state = {
     directorySearchTerm: '',
     lastAgentReportData: [],
     currentReportType: 'trip',
+    focusItemId: null, // ID of item to focus after re-render
 };

@@ -12,6 +12,16 @@ let mainPageView, passengerSearchInput, addPassengerBtn, passengersTableBody, pa
 // Initialize selectedPassengerId in the state
 state.selectedPassengerId = null;
 
+function scrollToSelected() {
+    if (!state.selectedPassengerId) return;
+    setTimeout(() => {
+        const row = passengersTableBody.querySelector(`tr[data-id="${state.selectedPassengerId}"]`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
+}
+
 export function renderMainPage() {
     if (!mainPageView) return;
     updateTripSelectorDisplays();
@@ -42,6 +52,23 @@ function updateRowHighlights() {
 }
 
 function renderPassengerTable(tripId) {
+    let justFocused = false;
+    if (state.focusItemId) {
+        const allPassengers = (state.collections.Passengers || []);
+        if (allPassengers.some(p => p.id === state.focusItemId)) {
+            // New item created/edited. Reset filters to make sure it's visible.
+            state.passengerFilter = 'all';
+            if (state.passengerSearchTerm) {
+                state.passengerSearchTerm = '';
+                if (passengerSearchInput) passengerSearchInput.value = '';
+            }
+
+            state.selectedPassengerId = state.focusItemId;
+            state.focusItemId = null;
+            justFocused = true;
+        }
+    }
+
     const allPassengersForTrip = (state.collections.Passengers || []).filter(p => (tripId === 'all' || (tripId && p.TripId === tripId)));
     let passengersToDisplay = [...allPassengersForTrip];
 
@@ -182,6 +209,10 @@ function renderPassengerTable(tripId) {
     }).join('');
 
     updateRowHighlights();
+
+    if (justFocused) {
+        scrollToSelected();
+    }
 }
 
 async function handleCopyPassenger(passengerId) {
@@ -192,7 +223,8 @@ async function handleCopyPassenger(passengerId) {
     if (state.selectedTripId && state.selectedTripId !== 'all') {
         newData.TripId = state.selectedTripId;
     }
-    await addDoc(collection(db, 'Passengers'), newData);
+    const newDocRef = await addDoc(collection(db, 'Passengers'), newData);
+    state.focusItemId = newDocRef.id;
 }
 
 async function togglePassengerStatus(passengerId) {
@@ -277,12 +309,12 @@ export function initMainView() {
             </table>
         </div>`;
 
-    passengerSearchInput = document.getElementById('passenger-search-input');
-    addPassengerBtn = document.getElementById('add-passenger-btn');
-    passengersTableBody = document.getElementById('passengers-table-body');
-    passengersTableHead = document.getElementById('passengers-table-head');
-    passengerDateHeader = document.getElementById('passenger-date-header');
-    tripInfo = document.getElementById('trip-info');
+    passengerSearchInput = mainPageView.querySelector('#passenger-search-input');
+    addPassengerBtn = mainPageView.querySelector('#add-passenger-btn');
+    passengersTableBody = mainPageView.querySelector('#passengers-table-body');
+    passengersTableHead = mainPageView.querySelector('#passengers-table-head');
+    passengerDateHeader = mainPageView.querySelector('#passenger-date-header');
+    tripInfo = mainPageView.querySelector('#trip-info');
 
     addPassengerBtn.addEventListener('click', () => openPassengerModal());
 

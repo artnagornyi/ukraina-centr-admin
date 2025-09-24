@@ -5,11 +5,20 @@ import { openParcelModal, openConfirmModal } from '../ui/modal.js';
 import { doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from '../firebase.js';
 
-let parcelsPageView, parcelsTableContainer, searchInput;
+let parcelsPageView, parcelsTableContainer, searchInput, parcelRecordCount;
 let searchTimeout = null;
 
-// Initialize selectedParcelId in the state
 state.selectedParcelId = null;
+
+function scrollToSelected() {
+    if (!state.selectedParcelId) return;
+    setTimeout(() => {
+        const row = parcelsTableContainer.querySelector(`tr[data-id="${state.selectedParcelId}"]`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
+}
 
 function getFilteredParcels() {
     let parcels = (state.collections.Parcels || []).filter(p => state.selectedTripId === 'all' || p.TripId === state.selectedTripId);
@@ -36,7 +45,7 @@ function getFilteredParcels() {
 async function handleNpCellEdit(e) {
     const td = e.target.closest('td[data-field="ClientNP"]');
     if (!td || td.querySelector('input')) {
-        return; // Not a ClientNP cell or already in edit mode
+        return;
     }
 
     const clientId = td.dataset.clientId;
@@ -95,7 +104,6 @@ function handleTableActions(e) {
             });
         }
     } else {
-        // Row click now handles selection
         state.selectedParcelId = parcelId;
         updateRowHighlights();
     }
@@ -197,6 +205,7 @@ export function initParcelsView() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <span id="parcel-record-count" class="text-sm text-gray-500 font-bold mr-4"></span>
                     <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span>Додати посилку</span>
@@ -206,10 +215,12 @@ export function initParcelsView() {
             <div id="parcels-table-container" class="overflow-x-auto mt-4"></div>
         </div>
     `;
-    parcelsTableContainer = document.getElementById('parcels-table-container');
-    searchInput = document.getElementById('parcel-search-input');
+    parcelsTableContainer = parcelsPageView.querySelector('#parcels-table-container');
+    searchInput = parcelsPageView.querySelector('#parcel-search-input');
+    parcelRecordCount = parcelsPageView.querySelector('#parcel-record-count');
+    const addParcelBtn = parcelsPageView.querySelector('#add-parcel-btn');
 
-    document.getElementById('add-parcel-btn').addEventListener('click', () => openParcelModal());
+    addParcelBtn.addEventListener('click', () => openParcelModal());
 
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimeout);
@@ -228,12 +239,28 @@ export function initParcelsView() {
 export function renderParcelsPage() {
     if (!parcelsPageView) return;
 
+    let justFocused = false;
+    if (state.focusItemId) {
+        const allParcels = (state.collections.Parcels || []);
+        if (allParcels.some(p => p.id === state.focusItemId)) {
+            if (state.parcelFilter) {
+                state.parcelFilter = '';
+                if (searchInput) searchInput.value = '';
+            }
+
+            state.selectedParcelId = state.focusItemId;
+            state.focusItemId = null;
+            justFocused = true;
+        }
+    }
+
     const selectedTrip = (state.collections.Trips || []).find(t => t.id === state.selectedTripId);
     const route = selectedTrip ? (state.collections.Routes || []).find(r => r.id === selectedTrip.RouteId) : null;
     const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
     const isFromUkraine = country ? country.Cod === 0 : false;
 
     const filteredParcels = getFilteredParcels();
+    parcelRecordCount.textContent = `Всього: ${filteredParcels.length}`;
 
     let enrichedParcels = filteredParcels.map(p => {
         const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
@@ -270,11 +297,10 @@ export function renderParcelsPage() {
 
     if (enrichedParcels.length === 0) {
         parcelsTableContainer.innerHTML = '<p class="text-center text-gray-500 py-8">Для обраного рейсу посилок не знайдено.</p>';
-        state.selectedParcelId = null; // Clear selection if no parcels
+        state.selectedParcelId = null;
         return;
     }
 
-    // Check if selected parcel is still in the list
     if (state.selectedParcelId && !enrichedParcels.some(p => p.id === state.selectedParcelId)) {
         state.selectedParcelId = null;
     }
@@ -310,18 +336,24 @@ export function renderParcelsPage() {
     parcelsTableContainer.innerHTML = tableHTML;
     updateRowHighlights();
 
-    const thead = document.getElementById('parcels-table-head');
-    thead.removeEventListener('click', handleSort);
-    thead.addEventListener('click', handleSort);
+    if (justFocused) {
+        scrollToSelected();
+    }
 
-    thead.querySelectorAll('th[data-sort-key]').forEach(th => {
-        const currentKey = th.dataset.sortKey;
-        let indicator = '';
-        if (sortConfig.key === currentKey) {
-            indicator = sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
-        }
-        th.innerHTML = th.textContent.replace(/[▲▼]/g, '').trim() + indicator;
-    });
+    const thead = parcelsTableContainer.querySelector('#parcels-table-head');
+    if (thead) {
+        thead.removeEventListener('click', handleSort);
+        thead.addEventListener('click', handleSort);
+
+        thead.querySelectorAll('th[data-sort-key]').forEach(th => {
+            const currentKey = th.dataset.sortKey;
+            let indicator = '';
+            if (sortConfig.key === currentKey) {
+                indicator = sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
+            }
+            th.innerHTML = th.textContent.replace(/[▲▼]/g, '').trim() + indicator;
+        });
+    }
 }
 
 function renderParcelRow(parcel, isFromUkraine) {

@@ -5,7 +5,7 @@ import { state, DIRECTORIES } from '../state.js';
 import { getDisplayValue } from '../utils.js';
 import { openDirectoryModal, openConfirmModal } from '../ui/modal.js';
 
-let directoriesPageView, directoryTabs, directoryTitle, directorySearchInput, addDirectoryItemBtn, directoryTableContainer, stationCountryFilter;
+let directoriesPageView, directoryTabs, directoryTitle, directoryRecordCount, directorySearchInput, addDirectoryItemBtn, directoryTableContainer, stationCountryFilter;
 
 state.selectedDirectoryItemId = null;
 
@@ -20,6 +20,16 @@ const DIRECTORY_ICONS = {
     Towns: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>`,
     Country: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>`,
 };
+
+function scrollToSelected() {
+    if (!state.selectedDirectoryItemId) return;
+    setTimeout(() => {
+        const row = directoryTableContainer.querySelector(`tbody tr[data-id="${state.selectedDirectoryItemId}"]`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
+}
 
 function updateRowHighlights() {
     const rows = directoryTableContainer.querySelectorAll('tbody tr[data-id]');
@@ -46,6 +56,7 @@ export function renderDirectoryPage() {
     } else {
         stationFilterContainer.classList.add('hidden');
     }
+
     renderDirectoryTable();
 }
 
@@ -65,10 +76,31 @@ function populateCountryFilter() {
 }
 
 function renderDirectoryTable() {
-    const directory = DIRECTORIES[state.currentDirectory];
-    let data = [...(state.collections[state.currentDirectory] || [])];
+    let justFocused = false;
+    if (state.focusItemId) {
+        const currentCollection = state.collections[state.currentDirectory] || [];
+        if (currentCollection.some(item => item.id === state.focusItemId)) {
+            if (state.directorySearchTerm) {
+                state.directorySearchTerm = '';
+                if (directorySearchInput) directorySearchInput.value = '';
+            }
+            if (state.stationCountryFilter && state.stationCountryFilter !== 'all') {
+                state.stationCountryFilter = 'all';
+                if (stationCountryFilter) stationCountryFilter.value = 'all';
+            }
 
-    // Filtering logic
+            state.selectedDirectoryItemId = state.focusItemId;
+            state.focusItemId = null;
+            justFocused = true;
+        }
+    }
+
+    const directory = DIRECTORIES[state.currentDirectory];
+    const allData = (state.collections[state.currentDirectory] || []);
+    directoryRecordCount.textContent = `Всього: ${allData.length}`;
+    
+    let data = [...allData];
+
     if (['Stations', 'Towns'].includes(state.currentDirectory) && state.stationCountryFilter && state.stationCountryFilter !== 'all') {
         const euCountry = (state.collections.Country || []).find(c => c.Name === 'European Union');
         const uaCountry = (state.collections.Country || []).find(c => c.Name === 'Україна');
@@ -91,7 +123,6 @@ function renderDirectoryTable() {
         );
     }
 
-    // Sorting logic
     const sortConfig = state.directorySortConfig || { key: Object.keys(directory.fields)[0], direction: 'ascending' };
     const { key, direction } = sortConfig;
     if (key) {
@@ -119,7 +150,6 @@ function renderDirectoryTable() {
         state.selectedDirectoryItemId = null;
     }
 
-    // Rendering HTML
     const headers = Object.keys(directory.fields).map(k =>
         `<th class="p-3 text-sm font-semibold tracking-wide cursor-pointer" data-sort-key="${k}">${directory.fields[k].label} ${key === k ? (direction === 'ascending' ? '▲' : '▼') : ''}</th>`
     ).join('') + '<th class="p-3">Дії</th>';
@@ -144,6 +174,10 @@ function renderDirectoryTable() {
 
     directoryTableContainer.innerHTML = `<table class="w-full text-left"><thead class="bg-gray-50 border-b-2 border-gray-200"><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
     updateRowHighlights();
+
+    if (justFocused) {
+        scrollToSelected();
+    }
 }
 
 function handleKeyboardNavigation(e) {
@@ -187,7 +221,9 @@ export function initDirectoriesView() {
         <div class="bg-white p-4 rounded-lg shadow-md mb-4">
             <div id="directory-tabs" class="flex flex-wrap gap-2 border-b border-gray-200 pb-2 mb-4"></div>
             <div class="flex justify-between items-center mb-4">
-                <h2 id="directory-title" class="text-2xl font-bold"></h2>
+                <div class="flex items-center">
+                    <h2 id="directory-title" class="text-2xl font-bold"></h2>
+                </div>
                 <div class="flex items-center gap-4 flex-grow mx-4">
                     <div id="station-filter-container" class="items-center hidden">
                         <label for="station-country-filter" class="mr-2 text-sm font-medium">Країна:</label>
@@ -196,6 +232,7 @@ export function initDirectoriesView() {
                     <label for="directory-search-input" class="sr-only">Пошук у довіднику</label>
                     <input type="text" id="directory-search-input" placeholder="Пошук (F7)..." class="w-full p-2 border border-gray-300 rounded-md">
                 </div>
+                <span id="directory-record-count" class="text-sm text-gray-500 font-semibold mr-4"></span>
                 <button id="add-directory-item-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     <span>Додати запис</span>
@@ -206,6 +243,7 @@ export function initDirectoriesView() {
 
     directoryTabs = document.getElementById('directory-tabs');
     directoryTitle = document.getElementById('directory-title');
+    directoryRecordCount = document.getElementById('directory-record-count');
     directorySearchInput = document.getElementById('directory-search-input');
     addDirectoryItemBtn = document.getElementById('add-directory-item-btn');
     directoryTableContainer = document.getElementById('directory-table-container');
@@ -226,7 +264,7 @@ export function initDirectoriesView() {
             directorySearchInput.value = '';
             state.directorySearchTerm = '';
             state.stationCountryFilter = 'all';
-            state.selectedDirectoryItemId = null; // Reset selection on tab change
+            state.selectedDirectoryItemId = null;
             renderDirectoryTabs();
             renderDirectoryPage();
         }

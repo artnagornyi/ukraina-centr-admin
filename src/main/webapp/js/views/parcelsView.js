@@ -1,6 +1,6 @@
 // js/views/parcelsView.js
 import { state } from '../state.js';
-import { getDisplayValue } from '../utils.js';
+import { getDisplayValue, getNextSelectable } from '../utils.js';
 import { openParcelModal, openConfirmModal } from '../ui/modal.js';
 import { doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from '../firebase.js';
@@ -131,21 +131,11 @@ function handleKeyboardNavigation(e) {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
 
-    let currentIndex = -1;
-    if (state.selectedParcelId) {
-        currentIndex = rows.findIndex(row => row.dataset.id === state.selectedParcelId);
-    }
+    const direction = e.key === 'ArrowDown' ? 'down' : 'up';
+    const { nextId, nextRow } = getNextSelectable(rows, state.selectedParcelId, direction);
 
-    let nextIndex = currentIndex;
-    if (e.key === 'ArrowDown') {
-        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
-    } else if (e.key === 'ArrowUp') {
-        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
-    }
-
-    const nextRow = rows[nextIndex];
     if (nextRow) {
-        state.selectedParcelId = nextRow.dataset.id;
+        state.selectedParcelId = nextId;
         updateRowHighlights();
         nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -207,7 +197,7 @@ export function initParcelsView() {
                 <div class="flex items-center gap-2">
                     <span id="parcel-record-count" class="text-sm text-gray-500 font-bold mr-4"></span>
                     <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span>Додати посилку</span>
                     </button>
                 </div>
@@ -379,8 +369,8 @@ function renderParcelRow(parcel, isFromUkraine) {
             ${dataCells}
             <td class="py-3 px-6 text-center">
                 <div class="flex item-center justify-center">
-                    <button class="w-6 h-6 text-gray-500 hover:text-blue-600" data-action="edit" title="Редагувати"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg></button>
-                    <button class="w-6 h-6 text-gray-500 hover:text-red-600 ml-2" data-action="delete" title="Видалити"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    <button class="w-6 h-6 text-gray-500 hover:text-blue-600" data-action="edit" title="Редагувати"><svg xmlns="http://www.w3.org/2000/svg" style="fill: none;" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg></button>
+                    <button class="w-6 h-6 text-gray-500 hover:text-red-600 ml-2" data-action="delete" title="Видалити"><svg xmlns="http://www.w3.org/2000/svg" style="fill: none;" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                 </div>
             </td>
         </tr>

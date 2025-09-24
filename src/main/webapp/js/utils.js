@@ -50,3 +50,26 @@ export function getDisplayValue(parentCollectionName, key, value) {
     if (key === 'Date' && value.seconds) return formatDate(value, 'dd.mm.yy');
     return value;
 }
+
+export function getNextSelectable(rows, currentSelectedId, direction) {
+    if (!rows || rows.length === 0) {
+        return { nextId: null, nextRow: null };
+    }
+
+    const currentIndex = rows.findIndex(row => row.dataset.id === currentSelectedId);
+
+    let nextIndex = currentIndex;
+    if (direction === 'down') {
+        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
+    } else if (direction === 'up') {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
+    } else if (currentIndex === -1) { // if nothing is selected, select the first
+        nextIndex = 0;
+    }
+
+
+    const nextRow = rows[nextIndex] || null;
+    const nextId = nextRow ? nextRow.dataset.id : null;
+
+    return { nextId, nextRow };
+}

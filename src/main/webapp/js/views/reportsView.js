@@ -504,6 +504,7 @@ function generateDepartureReport() {
         });
     });
 
+    const additionalSeatsCount = passengers.filter(p => p.Place).length;
     reportDisplayArea.innerHTML = `
         <div class="report-header" style="margin-bottom: 0.25rem;">
             <div class="report-header-flex-row">
@@ -512,10 +513,10 @@ function generateDepartureReport() {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
             <div style="font-size: 10pt;">
-                <span>Пасажирів: </span><strong>${passengers.length}</strong><span> + дод. місць: </span><strong>${passengers.filter(p => p.Place).length}</strong>
+                <span>Пасажирів всього: </span><strong>${passengers.length}</strong><span> + додаткових місць: </span><strong>${additionalSeatsCount}</strong>
             </div>
         </div>
         <table class="report-table departure-report-table"><tbody>${tableBodyHTML}</tbody></table>`;
@@ -570,7 +571,7 @@ function generateArrivalReport() {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
         <table class="report-table"><tbody>${tableBodyHTML}</tbody></table>`;
@@ -748,7 +749,7 @@ function handlePrint() {
         body { 
             font-family: 'Inter', sans-serif;
         }
-        .report-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; font-size: 11pt; }
+        .report-header { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; font-size: 11pt; }
         .report-header .report-header-flex-row { display: flex; justify-content: space-between; align-items: flex-start; }
         table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
         tr { page-break-inside: avoid; page-break-after: auto; }

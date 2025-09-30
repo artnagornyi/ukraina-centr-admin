@@ -12,7 +12,7 @@ import { selectDefaultTrip, setupTripSelector, selectNextFutureTrip, updateTripS
 const authOverlay = document.getElementById('auth-overlay');
 const authStatusText = document.getElementById('auth-status-text');
 const appView = document.getElementById('app-view');
-const navButtons = document.querySelectorAll('.nav-btn');
+const navButtons = document.querySelectorAll('.nav-btn[data-view]');
 const mainPageView = document.getElementById('main-page-view');
 const parcelsPageView = document.getElementById('parcels-page-view');
 const directoriesPageView = document.getElementById('directories-page-view');
@@ -98,7 +98,7 @@ function switchView(viewName) {
     directoriesPageView.classList.toggle('hidden', viewName !== 'directories');
     reportsPageView.classList.toggle('hidden', viewName !== 'reports');
 
-    navButtons.forEach(btn => {
+    document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
         btn.classList.toggle('bg-gray-200', btn.dataset.view === viewName);
         btn.classList.toggle('text-gray-900', btn.dataset.view === viewName);
         btn.classList.toggle('text-gray-700', btn.dataset.view !== viewName);
@@ -137,14 +137,31 @@ function switchView(viewName) {
 // --- GLOBAL EVENT LISTENERS ---
 function setupGlobalEventListeners() {
     homeLink.addEventListener('click', () => switchView('main'));
-    document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-        btn.addEventListener('click', () => switchView(btn.dataset.view));
-    });
 
-    const exitBtn = document.getElementById('exit-btn');
-    if (exitBtn) {
-        exitBtn.addEventListener('click', () => {
-            window.close();
+    const nav = document.querySelector('header nav');
+    if (nav) {
+        nav.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            if (button.dataset.view) {
+                switchView(button.dataset.view);
+            } else if (button.id === 'exit-btn') {
+                if (appView) appView.style.display = 'none';
+                if (authOverlay) authOverlay.style.display = 'none';
+
+                if (document.getElementById('exit-message-container')) return;
+
+                const exitMessageContainer = document.createElement('div');
+                exitMessageContainer.id = 'exit-message-container';
+                exitMessageContainer.innerHTML = `<div class="flex items-center justify-center h-screen bg-gray-100">
+                        <div class="bg-white p-10 rounded-lg shadow-lg text-center">
+                            <h1 class="text-2xl font-bold text-gray-800">Роботу завершено</h1>
+                            <p class="text-gray-600 mt-2">Ви можете закрити це вікно.</p>
+                        </div>
+                    </div>`;
+                document.body.appendChild(exitMessageContainer);
+            }
         });
     }
 

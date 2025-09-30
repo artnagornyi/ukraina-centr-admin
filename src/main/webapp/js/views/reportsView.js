@@ -104,7 +104,7 @@ function generateRomaReport() {
             <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             <span class="ml-4">${route?.Name || ''}</span>
         </div>
-        <table class="report-table" style="font-size: 10pt; width: 100%; border-collapse: collapse;">
+        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse;">
             <tbody>`;
 
     if (parcels.length === 0) {
@@ -113,14 +113,13 @@ function generateRomaReport() {
         sortedGroupKeys.forEach(stationId => {
             const group = groupedByStation[stationId];
             const stationName = group.station?.Name || 'Невідомо';
-            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold; text-align: right;">${stationName}</td></tr>`;
-
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold; text-align: right; font-size: 12pt;">${stationName}</td></tr>`;
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
             groupParcels.forEach((p, index) => {
                 const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-                const moneyCellContent = p.Paid ? '<strong>опл.</strong>' : (p.Money || '');
+                const moneyCellContent = p.Money || '';
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
@@ -132,162 +131,13 @@ function generateRomaReport() {
                     <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${moneyCellContent}</td>
                 </tr>`;
             });
-             reportHTML += `<tr><td colspan="7" style="border-bottom: 2px solid #000; padding: 0;"></td></tr>`;
+             reportHTML += `<tr><td colspan="7" style="border-bottom: 1px solid #ccc; padding: 0;"></td></tr>`;
         });
         reportHTML += `</tbody></table>`;
     }
 
     reportDisplayArea.innerHTML = reportHTML;
     parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', parcels.length === 0);
-}
-
-function generateKropyvnytskyiReport() {
-    const data = getTripData(state.selectedTripId, 'Parcels');
-    if (!data) return;
-    const { trip, route, country, items: allParcels } = data;
-
-    if (country?.Cod === 0) { // Should be a trip TO Ukraine
-        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
-        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
-        return;
-    }
-
-    const kropParcels = allParcels.filter(p => p.townEnd?.Name === 'Кропивницький');
-
-    let reportHTML = `
-            <div class="report-header" style="font-size: 12pt; margin-bottom: 1rem;">
-                <table style="width: 100%; border: none;">
-                    <tbody>
-                        <tr>
-                            <td style="text-align: left; border: none; padding: 0;">
-                                <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
-                                <span style="margin-left: 1rem;">${route?.Name || ''}</span>
-                            </td>
-                            <td style="text-align: right; border: none; padding: 0;">
-                                <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">Кропивницький</h3>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-
-    if (kropParcels.length === 0) {
-        reportHTML += '<p class="text-center text-gray-500">Посилок до м. Кропивницький для цього рейсу не знайдено.</p>';
-    } else {
-        reportHTML += `
-            <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 1px solid #000;">
-                <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
-                     <tr style="font-weight: normal; text-align: center;">
-                        <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
-                        <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
-                        <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
-                        <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Багаж</th>
-                        <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
-                        <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-
-        kropParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
-
-        kropParcels.forEach((p, index) => {
-            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-            const moneyCellContent = p.Money || '';
-            const isLastRow = index === kropParcels.length - 1;
-            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
-
-            reportHTML += `
-            <tr class="passenger-row" style="${rowStyle}">
-                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
-                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
-                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
-                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
-            </tr>`;
-        });
-
-        reportHTML += `</tbody></table>`;
-    }
-
-    reportDisplayArea.innerHTML = reportHTML;
-    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', kropParcels.length === 0);
-}
-
-function generateNovaPoshtaReport() {
-    const data = getTripData(state.selectedTripId, 'Parcels');
-    if (!data) return;
-    const { trip, route, country, items: allParcels } = data;
-
-    if (country?.Cod === 0) { // Should be a trip TO Ukraine
-        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
-        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
-        return;
-    }
-
-    const npParcels = allParcels.filter(p => p.client?.NPNum);
-
-    let reportHTML = `
-        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
-            <table style="width: 100%; border: none;">
-                <tbody>
-                    <tr>
-                        <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
-                            <span style="margin-left: 1rem;">${route?.Name || ''}</span>
-                        </td>
-                        <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">Нова Пошта</h3>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>`;
-
-    if (npParcels.length === 0) {
-        reportHTML += '<p class="text-center text-gray-500">Посилок з вказаною Новою Поштою для цього рейсу не знайдено.</p>';
-    } else {
-        reportHTML += `
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
-                 <tr style="font-weight: normal; text-align: center;">
-                    <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Місто отримання</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Нова пошта</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Багаж</th>
-                    <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
-                    <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
-                </tr>
-            </thead>
-            <tbody>`;
-
-        npParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
-
-        npParcels.forEach((p, index) => {
-            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-            const moneyCellContent = p.Money || '';
-            const isLastRow = index === npParcels.length - 1;
-            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
-
-            reportHTML += `
-            <tr class="passenger-row" style="${rowStyle}">
-                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
-                <td style="white-space: nowrap; vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.townEnd?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.NPNum || ''}</td>
-                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
-                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
-                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
-            </tr>`;
-        });
-        reportHTML += `</tbody></table>`;
-    }
-
-    reportDisplayArea.innerHTML = reportHTML;
-    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', npParcels.length === 0);
 }
 
 function generateParcelDepartureCitiesReport() {
@@ -331,7 +181,7 @@ function generateParcelDepartureCitiesReport() {
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">Відправка за містами</h3>
+                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Відправка за містами</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -349,7 +199,7 @@ function generateParcelDepartureCitiesReport() {
             const group = groupedByStation[stationId];
             const stationName = group.station?.Name || 'Невідомо';
 
-            reportHTML += `<tr class="group-header-row"><td colspan="7" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right;">${stationName}</td></tr>`;
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 12pt;">${stationName}</td></tr>`;
 
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
@@ -378,6 +228,154 @@ function generateParcelDepartureCitiesReport() {
 
     reportDisplayArea.innerHTML = reportHTML;
     parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', parcels.length === 0);
+}
+
+function generateKropyvnytskyiReport() {
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod === 0) { // Should be a trip TO Ukraine
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
+        return;
+    }
+
+    const kropParcels = allParcels.filter(p => p.townEnd?.Name === 'Кропивницький');
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
+            <table style="width: 100%; border: none;">
+                <tbody>
+                    <tr>
+                        <td style="text-align: left; border: none; padding: 0;">
+                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="margin-left: 1rem;">${route?.Name || ''}</span>
+                        </td>
+                        <td style="text-align: right; border: none; padding: 0;">
+                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Кропивницький</h3>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>`;
+
+    if (kropParcels.length === 0) {
+        reportHTML += '<p class="text-center text-gray-500">Посилок до м. Кропивницький для цього рейсу не знайдено.</p>';
+    } else {
+        reportHTML += `
+        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
+                 <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
+                    <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Багаж</th>
+                    <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
+                    <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        kropParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+        kropParcels.forEach((p, index) => {
+            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+            const moneyCellContent = p.Money || '';
+            const isLastRow = index === kropParcels.length - 1;
+            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
+
+            reportHTML += `
+            <tr class="passenger-row" style="${rowStyle}">
+                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
+                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
+                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
+                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
+                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
+            </tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', kropParcels.length === 0);
+}
+
+function generateNovaPoshtaReport() {
+    const data = getTripData(state.selectedTripId, 'Parcels');
+    if (!data) return;
+    const { trip, route, country, items: allParcels } = data;
+
+    if (country?.Cod === 0) { // Should be a trip TO Ukraine
+        reportDisplayArea.innerHTML = '<p class="text-center text-gray-500">Цей звіт призначений для рейсів на Україну.</p>';
+        parcelReportsSection.querySelector('.print-report-btn').classList.add('hidden');
+        return;
+    }
+
+    const npParcels = allParcels.filter(p => p.client?.NPNum);
+
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
+            <table style="width: 100%; border: none;">
+                <tbody>
+                    <tr>
+                        <td style="text-align: left; border: none; padding: 0;">
+                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="margin-left: 1rem;">${route?.Name || ''}</span>
+                        </td>
+                        <td style="text-align: right; border: none; padding: 0;">
+                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Нова Пошта</h3>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>`;
+
+    if (npParcels.length === 0) {
+        reportHTML += '<p class="text-center text-gray-500">Посилок з вказаною Новою Поштою для цього рейсу не знайдено.</p>';
+    } else {
+        reportHTML += `
+        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
+                 <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
+                    <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Місто отримання</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Нова пошта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Багаж</th>
+                    <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
+                    <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        npParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+        npParcels.forEach((p, index) => {
+            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+            const moneyCellContent = p.Money || '';
+            const isLastRow = index === npParcels.length - 1;
+            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
+
+            reportHTML += `
+            <tr class="passenger-row" style="${rowStyle}">
+                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
+                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
+                <td style="white-space: nowrap; vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.townEnd?.Name || ''}</td>
+                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.NPNum || ''}</td>
+                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
+                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
+                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
+            </tr>`;
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    parcelReportsSection.querySelector('.print-report-btn').classList.toggle('hidden', npParcels.length === 0);
 }
 
 function generateParcelArrivalCitiesReport() {
@@ -421,7 +419,7 @@ function generateParcelArrivalCitiesReport() {
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 12pt; font-weight: bold; margin: 0;">Отримання за містами</h3>
+                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Отримання за містами</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -439,7 +437,7 @@ function generateParcelArrivalCitiesReport() {
             const group = groupedByTown[townId];
             const townName = group.town?.Name || 'Невідомо';
 
-            reportHTML += `<tr class="group-header-row"><td colspan="6" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right;">${townName}</td></tr>`;
+            reportHTML += `<tr class="group-header-row"><td colspan="6" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 12pt;">${townName}</td></tr>`;
 
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
@@ -492,7 +490,7 @@ function generateCallListReport() {
     let listContent = '';
     sortedGroupKeys.forEach(stationId => {
         const group = groupedByStation[stationId];
-        listContent += `${group.name}\n`;
+        listContent += `<span style="font-size: 12pt; font-weight: bold;">${group.name}</span>\n`;
         group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
         group.passengers.forEach((p, index) => {
             const statusMarker = p.Status ? '+' : ' ';
@@ -515,7 +513,7 @@ function generateCallListReport() {
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
+        <pre style="font-size: 8pt; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -543,26 +541,29 @@ function generateDepartureReport() {
     let passengerThroughCount = 0;
     sortedGroupKeys.forEach(stationId => {
         const group = groupedByStation[stationId];
-        tableBodyHTML += `<tr class="group-header-row"><td colspan="4" style="text-align: right; padding: 4px;">${group.name} <strong>${group.time}</strong></td></tr>`;
+        tableBodyHTML += `<tr class="group-header-row"><td colspan="4" style="text-align: right; padding: 4px; font-size: 9pt;">${group.name} <strong>${group.time}</strong></td></tr>`;
         group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
         group.passengers.forEach((p, index) => {
             passengerThroughCount++;
             const statusLine = [p.Status ? '+' : '', p.Place ? '<strong>!h</strong>' : ''].filter(Boolean).join(' ');
-            const phones = [p.client?.TelUA ? `+38${p.client.TelUA}` : '', p.client?.TelEU ? `+39${p.client.TelEU}` : ''].filter(Boolean).join(', ');
+            const telUA = (p.client?.TelUA || '').split(',')[0].trim();
+            const telEU = (p.client?.TelEU || '').split(',')[0].trim();
+            const phones = [telUA, telEU].filter(Boolean).join(', ');
+
             tableBodyHTML += `
                 <tr class="passenger-row">
-                    <td style="text-align: center; width: 10%; vertical-align: top;">
+                    <td style="text-align: center; width: 1%; white-space: nowrap; vertical-align: top; font-size: 9pt;">
                         <div>${index + 1} / <strong>${passengerThroughCount}</strong></div>
                         <div>${statusLine}</div>
                     </td>
-                    <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%;">
+                    <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%; font-size: 10pt;">
                         <div>${p.client?.Name || ''}</div>
-                        <div>${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове місце!</strong>' : ''}</div>
+                        <div>${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове!</strong>' : ''}</div>
                     </td>
-                    <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%;">
+                    <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">
                         ${p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : ''}
                     </td>
-                    <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top;">
+                    <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; font-size: 9pt;">
                         <div>${phones}</div>
                         <div>${p.Note || ''}</div>
                     </td>
@@ -585,7 +586,7 @@ function generateDepartureReport() {
                 <span>Пасажирів всього: </span><strong>${passengers.length}</strong><span> + додаткових місць: </span><strong>${additionalSeatsCount}</strong>
             </div>
         </div>
-        <table class="report-table departure-report-table"><tbody>${tableBodyHTML}</tbody></table>`;
+        <table class="report-table departure-report-table" style="font-size: 9pt;"><tbody>${tableBodyHTML}</tbody></table>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -617,14 +618,15 @@ function generateArrivalReport() {
         group.passengers.forEach((p, index) => {
             passengerThroughCount++;
             const isFirstInGroup = index === 0;
-            const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap;"><strong>${group.time}</strong> ${group.name}</div>` : '';
+            // Змінено font-size для заголовка групи на 8pt
+            const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap; font-size: 8pt;"><strong>${group.time}</strong> ${group.name}</div>` : '';
             tableBodyHTML += `
                 <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
-                    <td style="width: 25%;">${stationCellContent}</td>
-                    <td style="width: 10%; text-align: center;">${index + 1} / <strong>${passengerThroughCount}</strong></td>
-                    <td style="width: 30%;">${p.client?.Name || ''}</td>
-                    <td style="width: 20%;">${p.townEnd?.Name || ''}</td>
-                    <td style="width: 15%;">${p.Note || ''}</td>
+                    <td style="width: 25%; font-size: 8pt;">${stationCellContent}</td>
+                    <td style="width: 10%; text-align: center; font-size: 8pt;">${index + 1} / <strong>${passengerThroughCount}</strong></td>
+                    <td style="width: 30%; font-size: 8pt;">${p.client?.Name || ''}</td>
+                    <td style="width: 20%; font-size: 8pt;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 15%; font-size: 8pt;"></td>
                 </tr>`;
         });
     });
@@ -640,7 +642,7 @@ function generateArrivalReport() {
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <table class="report-table"><tbody>${tableBodyHTML}</tbody></table>`;
+        <table class="report-table" style="font-size: 8pt;"><tbody>${tableBodyHTML}</tbody></table>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -663,21 +665,21 @@ function generateTransitReport() {
     transitPassengers.forEach((p, index) => {
         const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
         const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
-        listContent += `${index + 1}.\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${telUA}\t${telEU}\n`;
+        listContent += `${index + 1}.	${p.client?.Name || ''}	${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}	${telUA}	${telEU}\n`;
     });
 
     reportDisplayArea.innerHTML = `
         <div class="report-header">
              <div class="report-header-flex-row">
-                <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
-                <span style="text-align: right;">${route?.Name || ''}</span>
+                <span style="font-size: 12pt;"><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                <span style="text-align: right; font-size: 12pt;">${route?.Name || ''}</span>
             </div>
             <div class="report-header-flex-row">
-                <span>${driver?.Name || ''}</span>
-                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                <span style="font-size: 12pt;">${driver?.Name || ''}</span>
+                <span style="font-weight: bold; font-size: 12pt;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <pre style="font-size: 12px; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
+        <pre style="font-size: 8pt; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -746,21 +748,21 @@ function generateAgentReport() {
         let count = 0;
         Object.keys(groupedData).forEach(agentId => {
             const agentName = agentId === 'none' ? 'Без агента' : (state.collections.Agents.find(a => a.id === agentId)?.Name || 'Невідомий');
-            tableRows += `<tr class="group-header-row"><td colspan="5">${agentName}</td></tr>`;
+            tableRows += `<tr class="group-header-row" style="font-size: 12pt;"><td colspan="5">${agentName}</td></tr>`;
             groupedData[agentId].forEach(item => {
                 count++;
-                tableRows += `<tr><td>${count}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
+                tableRows += `<tr style="font-size: 8pt;"><td>${count}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
             });
         });
     } else {
         reportData.forEach((item, index) => {
-            tableRows += `<tr><td>${index + 1}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
+            tableRows += `<tr style="font-size: 8pt;"><td>${index + 1}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
         });
     }
 
     reportDisplayArea.innerHTML = reportData.length > 0
         ? `<h3 class="font-semibold text-lg mb-4">${headerText}</h3>
-           <table><thead><tr><th>№</th><th>Дата рейсу</th><th>Пасажир</th><th>Відправка</th><th>Прибуття</th></tr></thead><tbody>${tableRows}</tbody></table>`
+           <table><thead><tr style="font-size: 12pt;"><th>№</th><th>Дата рейсу</th><th>Пасажир</th><th>Відправка</th><th>Прибуття</th></tr></thead><tbody>${tableRows}</tbody></table>`
         : '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
 
     exportExcelBtn.classList.toggle('hidden', reportData.length === 0);
@@ -826,8 +828,8 @@ function handlePrint() {
         .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
         .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
         .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
-        .departure-report-table td { font-size: 9pt; }
-        .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; font-size: 10pt; }
+        .departure-report-table td { font-size: 8pt; }
+        .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; }
         .departure-report-table .phones-cell { width: 1%; white-space: nowrap; }
     `;
 
@@ -1052,7 +1054,7 @@ export function initReportsView() {
     generateAgentReportBtn.addEventListener('click', generateAgentReport);
 
     exportExcelBtn.addEventListener('click', exportAgentReportToExcel);
-    
+
     reportsPageView.addEventListener('click', (e) => {
         if (e.target.closest('.print-report-btn')) {
             handlePrint();

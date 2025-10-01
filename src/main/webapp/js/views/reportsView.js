@@ -28,7 +28,7 @@ function getTripData(tripId, collectionName = 'Passengers') {
     let items = [];
     if (collectionName === 'Passengers') {
         items = (state.collections.Passengers || [])
-            .filter(p => p.TripId === tripId)
+            .filter(p => p.TripId === tripId && !p.Canceled)
             .map(p => {
                 const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
                 const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;

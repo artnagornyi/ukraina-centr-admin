@@ -1,9 +1,9 @@
 // js/views/mainView.js
 import { db } from '../firebase.js';
-import { doc, setDoc, addDoc, Timestamp, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, setDoc, addDoc, Timestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { state } from '../state.js';
 import { getDisplayValue } from '../utils.js';
-import { openPassengerModal, openConfirmModal } from '../ui/modal.js';
+import { openPassengerModal } from '../ui/modal.js';
 import { updateTripSelectorDisplays } from '../tripSelector.js';
 
 // Module-level variables for DOM elements
@@ -33,17 +33,21 @@ function updateRowHighlights() {
     rows.forEach(row => {
         const passengerId = row.dataset.id;
         const isSelected = state.selectedPassengerId === passengerId;
+        const isCanceled = row.dataset.canceled === 'true';
+        const isPlace = row.dataset.place === 'true';
+        const isStatus = row.dataset.status === 'true';
 
         // Reset classes
-        row.classList.remove('bg-blue-200', 'bg-yellow-100', 'bg-green-50', 'hover:bg-gray-100');
+        row.classList.remove('bg-red-100', 'bg-blue-200', 'bg-yellow-100', 'bg-green-50', 'hover:bg-gray-100');
 
-        if (isSelected) {
+        if (isCanceled) {
+            row.classList.add('bg-red-100');
+        } else if (isSelected) {
             row.classList.add('bg-blue-200');
         } else {
-            // Apply original conditional classes if not selected
-            if (row.dataset.place === 'true') {
+            if (isPlace) {
                 row.classList.add('bg-yellow-100');
-            } else if (row.dataset.status === 'true') {
+            } else if (isStatus) {
                 row.classList.add('bg-green-50');
             }
             row.classList.add('hover:bg-gray-100');
@@ -56,13 +60,11 @@ function renderPassengerTable(tripId) {
     if (state.focusItemId) {
         const allPassengers = (state.collections.Passengers || []);
         if (allPassengers.some(p => p.id === state.focusItemId)) {
-            // New item created/edited. Reset filters to make sure it's visible.
-            state.passengerFilter = 'all';
+            state.passengerFilter = 'active'; // Default to active passengers
             if (state.passengerSearchTerm) {
                 state.passengerSearchTerm = '';
                 if (passengerSearchInput) passengerSearchInput.value = '';
             }
-
             state.selectedPassengerId = state.focusItemId;
             state.focusItemId = null;
             justFocused = true;
@@ -70,35 +72,46 @@ function renderPassengerTable(tripId) {
     }
 
     const allPassengersForTrip = (state.collections.Passengers || []).filter(p => (tripId === 'all' || (tripId && p.TripId === tripId)));
-    let passengersToDisplay = [...allPassengersForTrip];
+    const activePassengers = allPassengersForTrip.filter(p => !p.Canceled);
+
+    let passengersToDisplay;
+
+    // Filtering logic based on the new requirements
+    switch (state.passengerFilter) {
+        case 'all':
+            passengersToDisplay = [...allPassengersForTrip];
+            break;
+        case 'unconfirmed':
+            passengersToDisplay = activePassengers.filter(p => !p.Status);
+            break;
+        case 'additional':
+            passengersToDisplay = activePassengers.filter(p => p.Place);
+            break;
+        case 'active':
+        default:
+            passengersToDisplay = [...activePassengers];
+            break;
+    }
 
     if (tripId && tripId !== 'all') {
         const trip = (state.collections.Trips || []).find(t => t.id === tripId);
         const bus = trip ? (state.collections.Buses || []).find(b => b.id === trip.BusId) : null;
         const busCapacity = bus?.Capacity || 0;
-        const totalPassengers = allPassengersForTrip.length;
-        const unconfirmedCount = allPassengersForTrip.filter(p => !p.Status).length;
-        const additionalCount = allPassengersForTrip.filter(p => p.Place).length;
+        const totalPassengers = activePassengers.length;
+        const unconfirmedCount = activePassengers.filter(p => !p.Status).length;
+        const additionalCount = activePassengers.filter(p => p.Place).length;
         const isOverloaded = (totalPassengers + additionalCount) > (busCapacity - 2);
         const totalCountColor = isOverloaded ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
 
         tripInfo.innerHTML = `
-            <span class="cursor-pointer ${totalCountColor}" data-filter="all" title="Всього пасажирів (показати всіх)">${totalPassengers}</span>
+            <span class="cursor-pointer ${totalCountColor}" data-filter="active" title="Всього активних пасажирів">${totalPassengers}</span>
             <span class="cursor-pointer text-blue-600 font-bold ml-3" data-filter="unconfirmed" title="Не підтверджено">${unconfirmedCount}</span>
             <span class="cursor-pointer text-yellow-500 font-bold ml-3" data-filter="additional" title="Додаткові місця">+${additionalCount}</span>
             <span class="text-gray-500"> / </span>
-            <span class="cursor-pointer text-gray-800" data-filter="all" title="Місткість / Показати всіх">${busCapacity}</span>
+            <span class="cursor-pointer text-gray-800" data-filter="all" title="Місткість / Показати всіх (з скасованими)">${busCapacity}</span>
         `;
     } else {
         tripInfo.innerHTML = '';
-    }
-
-    if (tripId && tripId !== 'all') {
-        if (state.passengerFilter === 'unconfirmed') {
-            passengersToDisplay = allPassengersForTrip.filter(p => !p.Status);
-        } else if (state.passengerFilter === 'additional') {
-            passengersToDisplay = allPassengersForTrip.filter(p => p.Place);
-        }
     }
 
     let enriched = passengersToDisplay.map(p => {
@@ -192,7 +205,7 @@ function renderPassengerTable(tripId) {
     passengersTableBody.innerHTML = enriched.map(p => {
         const dateCell = tripId === 'all' ? `<td class="p-3 text-sm">${getDisplayValue(null, 'Date', p.TripDate)}</td>` : '';
         return `
-            <tr data-id="${p.id}" data-status="${p.Status}" data-place="${p.Place}" class="cursor-pointer ${p.Ticket ? 'font-bold' : ''} border-b">
+            <tr data-id="${p.id}" data-status="${p.Status}" data-place="${p.Place}" data-canceled="${p.Canceled || false}" class="cursor-pointer ${p.Ticket ? 'font-bold' : ''} border-b">
                 ${dateCell}
                 <td class="p-3 text-sm">${p.ClientName || ''}</td>
                 <td class="p-3 text-sm">${p.StationBegin}</td>
@@ -202,7 +215,7 @@ function renderPassengerTable(tripId) {
                     <button class="status-btn text-xl ${p.Status ? '' : 'opacity-25'}" data-id="${p.id}" title="Підтверджено">✅</button>
                     <button class="copy-passenger-btn text-gray-500 hover:text-gray-700 ml-2" data-id="${p.id}" title="Дублювати">📋</button>
                     <button class="edit-passenger-btn text-blue-500 hover:text-blue-700 ml-2" data-id="${p.id}" title="Редагувати">✏️</button>
-                    <button class="delete-passenger-btn text-red-500 hover:text-red-700 ml-2" data-id="${p.id}" data-name="${p.ClientName}" title="Видалити">🗑️</button>
+                    <button class="cancel-btn text-xl ${p.Canceled ? '' : 'opacity-25'} ml-2" data-id="${p.id}" title="Скасовано">🚫</button>
                 </td>
             </tr>
         `;
@@ -231,6 +244,13 @@ async function togglePassengerStatus(passengerId) {
     const passenger = (state.collections.Passengers || []).find(p => p.id === passengerId);
     if (passenger) {
         await setDoc(doc(db, 'Passengers', passengerId), { Status: !passenger.Status }, { merge: true });
+    }
+}
+
+async function togglePassengerCanceled(passengerId) {
+    const passenger = (state.collections.Passengers || []).find(p => p.id === passengerId);
+    if (passenger) {
+        await setDoc(doc(db, 'Passengers', passengerId), { Canceled: !passenger.Canceled }, { merge: true });
     }
 }
 
@@ -288,7 +308,7 @@ export function initMainView() {
             </div>
             <div id="trip-info" class="text-lg font-bold"></div>
             <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                 <span>Додати пасажира</span>
             </button>
         </div>
@@ -309,14 +329,16 @@ export function initMainView() {
             </table>
         </div>`;
 
-    passengerSearchInput = mainPageView.querySelector('#passenger-search-input');
-    addPassengerBtn = mainPageView.querySelector('#add-passenger-btn');
-    passengersTableBody = mainPageView.querySelector('#passengers-table-body');
-    passengersTableHead = mainPageView.querySelector('#passengers-table-head');
-    passengerDateHeader = mainPageView.querySelector('#passenger-date-header');
-    tripInfo = mainPageView.querySelector('#trip-info');
+    passengerSearchInput = document.getElementById('passenger-search-input');
+    addPassengerBtn = document.getElementById('add-passenger-btn');
+    passengersTableBody = document.getElementById('passengers-table-body');
+    passengersTableHead = document.getElementById('passengers-table-head');
+    passengerDateHeader = document.getElementById('passenger-date-header');
+    tripInfo = document.getElementById('trip-info');
 
-    addPassengerBtn.addEventListener('click', () => openPassengerModal());
+    addPassengerBtn.addEventListener('click', () => {
+        openPassengerModal();
+    });
 
     passengerSearchInput.addEventListener('input', (e) => {
         state.passengerSearchTerm = e.target.value;
@@ -358,14 +380,12 @@ export function initMainView() {
         if (button) {
             if (button.classList.contains('edit-passenger-btn')) {
                 openPassengerModal(id);
-            } else if (button.classList.contains('delete-passenger-btn')) {
-                openConfirmModal(`Ви впевнені, що хочете видалити "${button.dataset.name}"?`, async () => {
-                    await deleteDoc(doc(db, 'Passengers', id));
-                });
             } else if (button.classList.contains('copy-passenger-btn')) {
                 await handleCopyPassenger(id);
             } else if (button.classList.contains('status-btn')) {
                 await togglePassengerStatus(id);
+            } else if (button.classList.contains('cancel-btn')) {
+                await togglePassengerCanceled(id);
             }
         } else {
             state.selectedPassengerId = id;

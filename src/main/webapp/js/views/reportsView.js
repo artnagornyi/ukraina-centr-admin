@@ -552,16 +552,17 @@ function generateDepartureReport() {
 
             tableBodyHTML += `
                 <tr class="passenger-row">
-                    <td style="text-align: center; width: 1%; white-space: nowrap; vertical-align: top; font-size: 9pt;">
+                    <td style="text-align: center; width: 1%; white-space: nowrap; vertical-align: top; font-size: 8pt;">
                         <div>${index + 1} / <strong>${passengerThroughCount}</strong></div>
                         <div>${statusLine}</div>
                     </td>
-                    <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%; font-size: 10pt;">
-                        <div>${p.client?.Name || ''}</div>
-                        <div>${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове!</strong>' : ''}</div>
+                    <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%;">
+                        <div style="font-size: 11pt;">${p.client?.Name || ''}</div>
+                        <div style="font-size: 8pt;">${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове місце!</strong>' : ''}</div>
                     </td>
+                                        
                     <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">
-                        ${p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : ''}
+                        ${p.Ticket ? '<div style="font-size: 9pt; font-weight: bold;">квиток</div>' : ''}
                     </td>
                     <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; font-size: 9pt;">
                         <div>${phones}</div>
@@ -582,7 +583,7 @@ function generateDepartureReport() {
                 <span>${driver?.Name || ''}</span>
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
-            <div style="font-size: 10pt;">
+            <div style="font-size: 9pt;">
                 <span>Пасажирів всього: </span><strong>${passengers.length}</strong><span> + додаткових місць: </span><strong>${additionalSeatsCount}</strong>
             </div>
         </div>

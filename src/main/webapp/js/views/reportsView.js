@@ -100,38 +100,56 @@ function generateRomaReport() {
     });
 
     let reportHTML = `
-        <div class="report-header" style="font-size: 11pt; text-align: left; margin-bottom: 1rem;">
-            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
-            <span class="ml-4">${route?.Name || ''}</span>
-        </div>
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse;">
-            <tbody>`;
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
+            <table style="width: 100%; border: none;">
+                <tbody>
+                    <tr>
+                        <td style="text-align: left; border: none; padding: 0;">
+                            <span style="font-size: 11pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="margin-left: 1rem;">${route?.Name || ''}</span>
+                        </td>
+                        <td style="text-align: right; border: none; padding: 0;">
+                            <h3 style="font-size: 11pt; font-weight: bold; margin: 0;">Roma</h3>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>`;
 
     if (parcels.length === 0) {
-        reportHTML = '<p class="text-center text-gray-500">Посилок, що відповідають критеріям (код зупинки 2000-2099), не знайдено.</p>';
+        reportHTML += '<p class="text-center text-gray-500">Посилок, що відповідають критеріям (код зупинки 2000-2099), не знайдено.</p>';
     } else {
-        sortedGroupKeys.forEach(stationId => {
+        reportHTML += `
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <tbody>`;
+
+        sortedGroupKeys.forEach((stationId, groupIndex) => {
             const group = groupedByStation[stationId];
             const stationName = group.station?.Name || 'Невідомо';
-            reportHTML += `<tr class="group-header-row"><td colspan="7" style="padding-top: 1rem; font-weight: bold; text-align: right; font-size: 12pt;">${stationName}</td></tr>`;
+
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 10pt;">${stationName}</td></tr>`;
+
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
             groupParcels.forEach((p, index) => {
                 const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-                const moneyCellContent = p.Money || '';
+                const moneyCellContent = p.Paid ? '<strong style="font-size: 9pt;">опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
-                    <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc;">${index + 1}.</td>
-                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.client?.Name || ''}</td>
-                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${p.townEnd?.Name || ''}</td>
-                    <td style="width: 1%; white-space: nowrap; vertical-align: top;">${phones}</td>
-                    <td style="vertical-align: top; border-left: 1px solid #ccc;">${p.Name || ''}</td>
-                    <td style="width: 5%; vertical-align: top; text-align: center;">${p.Weight || ''}</td>
-                    <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc;">${moneyCellContent}</td>
+                    <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
+                    <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
+                    <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.townEnd?.Name || ''}</td>
+                    <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
+                    <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
+                    <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
+                    <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
                 </tr>`;
             });
-             reportHTML += `<tr><td colspan="7" style="border-bottom: 1px solid #ccc; padding: 0;"></td></tr>`;
+
+            if (groupIndex < sortedGroupKeys.length - 1) {
+                reportHTML += `<tr><td colspan="7" style="padding: 2px 0;"></td></tr>`;
+            }
         });
         reportHTML += `</tbody></table>`;
     }
@@ -177,11 +195,11 @@ function generateParcelDepartureCitiesReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-size: 11pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Відправка за містами</h3>
+                            <h3 style="font-size: 11pt; font-weight: bold; margin: 0;">Відправка за містами</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -192,21 +210,21 @@ function generateParcelDepartureCitiesReport() {
         reportHTML += '<p class="text-center text-gray-500">Посилок, що відповідають критеріям (код зупинки > 2099), не знайдено.</p>';
     } else {
         reportHTML += `
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
             <tbody>`;
 
         sortedGroupKeys.forEach((stationId, groupIndex) => {
             const group = groupedByStation[stationId];
             const stationName = group.station?.Name || 'Невідомо';
 
-            reportHTML += `<tr class="group-header-row"><td colspan="7" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 12pt;">${stationName}</td></tr>`;
+            reportHTML += `<tr class="group-header-row"><td colspan="7" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 10pt;">${stationName}</td></tr>`;
 
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
 
             groupParcels.forEach((p, index) => {
                 const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-                const moneyCellContent = p.Money || '';
+                const moneyCellContent = p.Paid ? '<strong style="font-size: 9pt;">опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
@@ -220,7 +238,7 @@ function generateParcelDepartureCitiesReport() {
             });
 
             if (groupIndex < sortedGroupKeys.length - 1) {
-                reportHTML += `<tr><td colspan="7" style="padding: 2px 0;"></td></tr>`;
+                reportHTML += `<tr><td colspan="7" style="padding: 1px 0;"></td></tr>`;
             }
         });
         reportHTML += `</tbody></table>`;

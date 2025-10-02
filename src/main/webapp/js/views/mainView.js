@@ -1,9 +1,9 @@
 // js/views/mainView.js
 import { db } from '../firebase.js';
-import { doc, setDoc, addDoc, Timestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, setDoc, addDoc, Timestamp, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { state } from '../state.js';
 import { getDisplayValue } from '../utils.js';
-import { openPassengerModal } from '../ui/modal.js';
+import { openPassengerModal, openConfirmModal } from '../ui/modal.js';
 import { updateTripSelectorDisplays } from '../tripSelector.js';
 
 // Module-level variables for DOM elements
@@ -73,6 +73,7 @@ function renderPassengerTable(tripId) {
 
     const allPassengersForTrip = (state.collections.Passengers || []).filter(p => (tripId === 'all' || (tripId && p.TripId === tripId)));
     const activePassengers = allPassengersForTrip.filter(p => !p.Canceled);
+    const canceledPassengers = allPassengersForTrip.filter(p => p.Canceled);
 
     let passengersToDisplay;
 
@@ -87,6 +88,9 @@ function renderPassengerTable(tripId) {
         case 'additional':
             passengersToDisplay = activePassengers.filter(p => p.Place);
             break;
+        case 'canceled':
+            passengersToDisplay = [...canceledPassengers];
+            break;
         case 'active':
         default:
             passengersToDisplay = [...activePassengers];
@@ -100,6 +104,7 @@ function renderPassengerTable(tripId) {
         const totalPassengers = activePassengers.length;
         const unconfirmedCount = activePassengers.filter(p => !p.Status).length;
         const additionalCount = activePassengers.filter(p => p.Place).length;
+        const canceledCount = canceledPassengers.length;
         const isOverloaded = (totalPassengers + additionalCount) > (busCapacity - 2);
         const totalCountColor = isOverloaded ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
 
@@ -107,6 +112,7 @@ function renderPassengerTable(tripId) {
             <span class="cursor-pointer ${totalCountColor}" data-filter="active" title="Всього активних пасажирів">${totalPassengers}</span>
             <span class="cursor-pointer text-blue-600 font-bold ml-3" data-filter="unconfirmed" title="Не підтверджено">${unconfirmedCount}</span>
             <span class="cursor-pointer text-yellow-500 font-bold ml-3" data-filter="additional" title="Додаткові місця">+${additionalCount}</span>
+            <span class="cursor-pointer text-pink-500 font-bold ml-3" data-filter="canceled" title="Скасовані">${canceledCount}</span>
             <span class="text-gray-500"> / </span>
             <span class="cursor-pointer text-gray-800" data-filter="all" title="Місткість / Показати всіх (з скасованими)">${busCapacity}</span>
         `;
@@ -216,6 +222,7 @@ function renderPassengerTable(tripId) {
                     <button class="copy-passenger-btn text-gray-500 hover:text-gray-700 ml-2" data-id="${p.id}" title="Дублювати">📋</button>
                     <button class="edit-passenger-btn text-blue-500 hover:text-blue-700 ml-2" data-id="${p.id}" title="Редагувати">✏️</button>
                     <button class="cancel-btn text-xl ${p.Canceled ? '' : 'opacity-25'} ml-2" data-id="${p.id}" title="Скасовано">🚫</button>
+                    <button class="delete-passenger-btn text-red-500 hover:text-red-700 ml-2" data-id="${p.id}" data-name="${p.ClientName}" title="Видалити">🗑️</button>
                 </td>
             </tr>
         `;
@@ -380,6 +387,10 @@ export function initMainView() {
         if (button) {
             if (button.classList.contains('edit-passenger-btn')) {
                 openPassengerModal(id);
+            } else if (button.classList.contains('delete-passenger-btn')) {
+                openConfirmModal(`Ви впевнені, що хочете видалити "${button.dataset.name}"?`, async () => {
+                    await deleteDoc(doc(db, 'Passengers', id));
+                });
             } else if (button.classList.contains('copy-passenger-btn')) {
                 await handleCopyPassenger(id);
             } else if (button.classList.contains('status-btn')) {

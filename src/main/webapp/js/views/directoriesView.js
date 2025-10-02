@@ -159,6 +159,14 @@ function renderDirectoryTable() {
             if (state.currentDirectory === 'Stations' && fieldKey === 'Cod') {
                 return `<td class="p-1"><input type="text" value="${item[fieldKey] || ''}" data-id="${item.id}" data-key="Cod" class="w-20 p-2 border border-gray-200 rounded-md text-center cod-input"></td>`;
             }
+            // Додано блок для обробки поля "Карта"
+            if (state.currentDirectory === 'Stations' && fieldKey === 'Map') {
+                if (item.Map) {
+                    return `<td class="p-3 text-sm text-center"><a href="${item.Map}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700" title="Відкрити на карті">📍</a></td>`;
+                } else {
+                    return '<td class="p-3 text-sm"></td>'; // Порожня комірка, якщо посилання немає
+                }
+            }
             return `<td class="p-3 text-sm">${getDisplayValue(state.currentDirectory, fieldKey, item[fieldKey])}</td>`;
         }).join('');
 

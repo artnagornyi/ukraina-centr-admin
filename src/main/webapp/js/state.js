@@ -99,6 +99,7 @@ export const DIRECTORIES = {
             CountryId: { label: 'Країна', type: 'fk', required: true },
             TimeBegin: { label: 'Час відправки', type: 'text' },
             TimeEnd: { label: 'Час прибуття', type: 'text' },
+            Map: { label: 'Карта', type: 'url' },
         }
     },
     Towns: {

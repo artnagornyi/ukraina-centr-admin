@@ -4,10 +4,11 @@ import { formatDate, parseDateString } from '../utils.js';
 import { openInfoModal } from '../ui/modal.js';
 
 // Module-level variables for DOM elements
-let reportsPageView, reportTypeTripBtn, reportTypeParcelBtn, reportTypeAgentBtn, tripReportsSection, parcelReportsSection, agentReportSection,
+let reportsPageView, reportTypeTripBtn, reportTypeParcelBtn, reportTypeAgentBtn, reportTypePassengerFlowBtn,
+    tripReportsSection, parcelReportsSection, agentReportSection, passengerFlowReportSection,
     generateCallListBtn, generateDepartureListBtn, generateArrivalListBtn, generateTransitListBtn,
     generateRomaReportBtn, generateParcelDepartureCitiesReportBtn, generateKropyvnytskyiReportBtn, generateNovaPoshtaReportBtn, generateParcelArrivalCitiesReportBtn,
-    generateAgentReportBtn, exportExcelBtn, reportDisplayArea;
+    generateAgentReportBtn, generatePassengerFlowReportBtn, generatePassengerFlowChartBtn, exportExcelBtn, reportDisplayArea;
 
 function getTripData(tripId, collectionName = 'Passengers') {
     if (!tripId || tripId === 'all') {
@@ -105,11 +106,11 @@ function generateRomaReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 11pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 11pt; font-weight: bold; margin: 0;">Roma</h3>
+                            <h3 style="font-weight: bold; margin: 0;">Roma</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -134,7 +135,7 @@ function generateRomaReport() {
 
             groupParcels.forEach((p, index) => {
                 const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-                const moneyCellContent = p.Paid ? '<strong style="font-size: 9pt;">опл.</strong>' : (p.Money || '');
+                const moneyCellContent = p.Paid ? '<strong style="font-size: 8pt;">опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
@@ -195,11 +196,11 @@ function generateParcelDepartureCitiesReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 11pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 11pt; font-weight: bold; margin: 0;">Відправка за містами</h3>
+                            <h3 style="font-weight: bold; margin: 0;">Відправка за містами</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -224,7 +225,7 @@ function generateParcelDepartureCitiesReport() {
 
             groupParcels.forEach((p, index) => {
                 const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-                const moneyCellContent = p.Paid ? '<strong style="font-size: 9pt;">опл.</strong>' : (p.Money || '');
+                const moneyCellContent = p.Paid ? '<strong style="font-size: 8pt;">опл.</strong>' : (p.Money || '');
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
@@ -238,7 +239,7 @@ function generateParcelDepartureCitiesReport() {
             });
 
             if (groupIndex < sortedGroupKeys.length - 1) {
-                reportHTML += `<tr><td colspan="7" style="padding: 1px 0;"></td></tr>`;
+                reportHTML += `<tr><td colspan="7" style="padding: 2px 0;"></td></tr>`;
             }
         });
         reportHTML += `</tbody></table>`;
@@ -286,7 +287,7 @@ function generateKropyvnytskyiReport() {
             <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
                  <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім\'я клієнта</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Багаж</th>
                     <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
@@ -358,7 +359,7 @@ function generateNovaPoshtaReport() {
             <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
                  <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
-                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім'я клієнта</th>
+                    <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім\'я клієнта</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Місто отримання</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Нова пошта</th>
@@ -505,23 +506,8 @@ function generateCallListReport() {
 
     const sortedGroupKeys = Object.keys(groupedByStation).sort((a, b) => groupedByStation[a].code - groupedByStation[b].code);
 
-    let listContent = '';
-    sortedGroupKeys.forEach(stationId => {
-        const group = groupedByStation[stationId];
-        listContent += `<span style="font-size: 12pt; font-weight: bold;">${group.name}</span>\n`;
-        group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
-        group.passengers.forEach((p, index) => {
-            const statusMarker = p.Status ? '+' : ' ';
-            const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
-            const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
-            const phones = [telUA, telEU].filter(Boolean).join(', ');
-            listContent += `${index + 1}. ${statusMarker}\t${p.client?.Name || ''}\t${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}\t${phones}\n`;
-        });
-        listContent += '\n';
-    });
-
-    reportDisplayArea.innerHTML = `
-        <div class="report-header">
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt;">
             <div class="report-header-flex-row">
                 <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
                 <span style="text-align: right;">${route?.Name || ''}</span>
@@ -531,7 +517,37 @@ function generateCallListReport() {
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <pre style="font-size: 8pt; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">
+            <tbody>`;
+
+    if (passengers.length === 0) {
+        reportHTML = '<p class="text-center text-gray-500">Пасажирів для цього рейсу не знайдено.</p>';
+    } else {
+        sortedGroupKeys.forEach(stationId => {
+            const group = groupedByStation[stationId];
+            reportHTML += `<tr class="group-header-row"><td colspan="5" style="font-size: 10pt; font-weight: bold; text-align: left; padding-top: 0.5rem;">${group.name}</td></tr>`;
+
+            group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            group.passengers.forEach((p, index) => {
+                const statusMarker = p.Status ? '+' : ' ';
+                const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
+                const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
+                const phones = [telUA, telEU].filter(Boolean).join(', ');
+
+                reportHTML += `
+                <tr class="passenger-row">
+                    <td style="width: 5%;">${index + 1}. ${statusMarker}</td>
+                    <td style="width: 30%;">${p.client?.Name || ''}</td>
+                    <td style="width: 35%;">${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}</td>
+                    <td style="width: 30%;">${phones}</td>
+                </tr>`;
+            });
+        });
+        reportHTML += `</tbody></table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -570,17 +586,16 @@ function generateDepartureReport() {
 
             tableBodyHTML += `
                 <tr class="passenger-row">
-                    <td style="text-align: center; width: 1%; white-space: nowrap; vertical-align: top; font-size: 8pt;">
+                    <td style="text-align: center; width: 1%; white-space: nowrap; vertical-align: top; font-size: 9pt;">
                         <div>${index + 1} / <strong>${passengerThroughCount}</strong></div>
                         <div>${statusLine}</div>
                     </td>
                     <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%;">
-                        <div style="font-size: 11pt;">${p.client?.Name || ''}</div>
+                        <div style="font-size: 10pt;">${p.client?.Name || ''}</div>
                         <div style="font-size: 8pt;">${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове місце!</strong>' : ''}</div>
                     </td>
-                                        
                     <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">
-                        ${p.Ticket ? '<div style="font-size: 9pt; font-weight: bold;">квиток</div>' : ''}
+                        ${p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : ''}
                     </td>
                     <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; font-size: 9pt;">
                         <div>${phones}</div>
@@ -601,7 +616,7 @@ function generateDepartureReport() {
                 <span>${driver?.Name || ''}</span>
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
-            <div style="font-size: 9pt;">
+            <div style="font-size: 10pt;">
                 <span>Пасажирів всього: </span><strong>${passengers.length}</strong><span> + додаткових місць: </span><strong>${additionalSeatsCount}</strong>
             </div>
         </div>
@@ -637,7 +652,6 @@ function generateArrivalReport() {
         group.passengers.forEach((p, index) => {
             passengerThroughCount++;
             const isFirstInGroup = index === 0;
-            // Змінено font-size для заголовка групи на 8pt
             const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap; font-size: 8pt;"><strong>${group.time}</strong> ${group.name}</div>` : '';
             tableBodyHTML += `
                 <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
@@ -680,25 +694,44 @@ function generateTransitReport() {
         return;
     }
 
-    let listContent = '';
-    transitPassengers.forEach((p, index) => {
-        const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
-        const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
-        listContent += `${index + 1}.	${p.client?.Name || ''}	${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}	${telUA}	${telEU}\n`;
-    });
-
-    reportDisplayArea.innerHTML = `
-        <div class="report-header">
+    let reportHTML = `
+        <div class="report-header" style="font-size: 11pt;">
              <div class="report-header-flex-row">
-                <span style="font-size: 12pt;"><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
-                <span style="text-align: right; font-size: 12pt;">${route?.Name || ''}</span>
+                <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
+                <span style="text-align: right;">${route?.Name || ''}</span>
             </div>
             <div class="report-header-flex-row">
-                <span style="font-size: 12pt;">${driver?.Name || ''}</span>
-                <span style="font-weight: bold; font-size: 12pt;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                <span>${driver?.Name || ''}</span>
+                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <pre style="font-size: 8pt; font-family: 'Inter', sans-serif; white-space: pre-wrap;">${listContent}</pre>`;
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="font-size: 10pt; text-align: left;">
+                    <th style="width: 5%; padding: 4px; border-bottom: 1px solid #000;">№</th>
+                    <th style="width: 25%; padding: 4px; border-bottom: 1px solid #000;">Ім'я</th>
+                    <th style="width: 30%; padding: 4px; border-bottom: 1px solid #000;">Маршрут</th>
+                    <th style="width: 20%; padding: 4px; border-bottom: 1px solid #000;">Телефон UA</th>
+                    <th style="width: 20%; padding: 4px; border-bottom: 1px solid #000;">Телефон EU</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    transitPassengers.forEach((p, index) => {
+        const telUA = p.client?.TelUA || '';
+        const telEU = p.client?.TelEU || '';
+        reportHTML += `
+            <tr class="passenger-row">
+                <td>${index + 1}.</td>
+                <td>${p.client?.Name || ''}</td>
+                <td>${p.townBegin?.Name || ''} - ${p.townEnd?.Name || ''}</td>
+                <td>${telUA}</td>
+                <td>${telEU}</td>
+            </tr>`;
+    });
+
+    reportHTML += `</tbody></table>`;
+    reportDisplayArea.innerHTML = reportHTML;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -788,6 +821,168 @@ function generateAgentReport() {
     agentReportSection.querySelector('.print-report-btn').classList.toggle('hidden', reportData.length === 0);
 }
 
+function generatePassengerFlowReport() {
+    const startDateInput = document.getElementById('passenger-flow-start-date');
+    const endDateInput = document.getElementById('passenger-flow-end-date');
+    const startDate = parseDateString(startDateInput.value);
+    const endDate = parseDateString(endDateInput.value);
+
+    if (!startDate || !endDate) {
+        return openInfoModal('Будь ласка, вкажіть початкову та кінцеву дати.');
+    }
+    endDate.setHours(23, 59, 59, 999);
+
+    const tripsInPeriod = (state.collections.Trips || []).filter(trip => {
+        const tripDate = trip.Date.toDate();
+        return tripDate >= startDate && tripDate <= endDate;
+    });
+
+    const reportData = tripsInPeriod.map(trip => {
+        const passengersForTrip = (state.collections.Passengers || []).filter(p => p.TripId === trip.id);
+        const activePassengers = passengersForTrip.filter(p => !p.Canceled);
+
+        const passengerCount = activePassengers.length;
+        const additionalSeatsCount = activePassengers.filter(p => p.Place).length;
+        const canceledCount = passengersForTrip.length - activePassengers.length;
+
+        return {
+            date: formatDate(trip.Date, 'dd.mm.yyyy'),
+            routeName: (state.collections.Routes || []).find(r => r.id === trip.RouteId)?.Name || 'N/A',
+            passengerCount: passengerCount,
+            additionalSeatsCount: additionalSeatsCount,
+            canceledCount: canceledCount
+        };
+    });
+
+    reportData.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
+
+    let reportHTML = `<h3 class="font-semibold text-lg mb-4">Пасажиропотік за період з ${startDateInput.value} по ${endDateInput.value}</h3>`;
+
+    if (reportData.length === 0) {
+        reportHTML += '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
+    } else {
+        reportHTML += `
+            <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse;">
+                <thead style="background-color: #f2f2f2; font-size: 12pt;">
+                    <tr>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">Дата</th>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">Рейс</th>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">К-ть пасажирів</th>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">Дод. місця</th>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">Скасовані</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${reportData.map(item => `
+                        <tr>
+                            <td style="padding: 4px;">${item.date}</td>
+                            <td style="padding: 4px;">${item.routeName}</td>
+                            <td style="padding: 4px; text-align: center;">${item.passengerCount || ''}</td>
+                            <td style="padding: 4px; text-align: center;">${item.additionalSeatsCount || ''}</td>
+                            <td style="padding: 4px; text-align: center;">${item.canceledCount || ''}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    reportDisplayArea.innerHTML = reportHTML;
+    passengerFlowReportSection.querySelector('.print-report-btn').classList.toggle('hidden', reportData.length === 0);
+}
+
+function generatePassengerFlowChart() {
+    const startDateInput = document.getElementById('passenger-flow-start-date');
+    const endDateInput = document.getElementById('passenger-flow-end-date');
+    const startDate = parseDateString(startDateInput.value);
+    const endDate = parseDateString(endDateInput.value);
+
+    if (!startDate || !endDate) {
+        return openInfoModal('Будь ласка, вкажіть початкову та кінцеву дати.');
+    }
+    endDate.setHours(23, 59, 59, 999);
+
+    const tripsInPeriod = (state.collections.Trips || [])
+        .filter(trip => {
+            const tripDate = trip.Date.toDate();
+            return tripDate >= startDate && tripDate <= endDate;
+        })
+        .sort((a, b) => a.Date.seconds - b.Date.seconds);
+
+    const chartData = {
+        labels: [],
+        datasets: [
+            {
+                label: 'З України',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                stack: 'Stack 0',
+            },
+            {
+                label: 'Дод. місця (з Укр)',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.3)',
+                stack: 'Stack 0',
+            },
+            {
+                label: 'З ЄС',
+                data: [],
+                backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                stack: 'Stack 1',
+            },
+            {
+                label: 'Дод. місця (з ЄС)',
+                data: [],
+                backgroundColor: 'rgba(255, 206, 86, 0.3)',
+                stack: 'Stack 1',
+            }
+        ]
+    };
+
+    tripsInPeriod.forEach(trip => {
+        const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+        const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+        const activePassengers = (state.collections.Passengers || []).filter(p => p.TripId === trip.id && !p.Canceled);
+
+        const passengerCount = activePassengers.length;
+        const additionalSeatsCount = activePassengers.filter(p => p.Place).length;
+
+        chartData.labels.push(formatDate(trip.Date, 'dd.mm'));
+
+        if (country?.Cod === 0) { // From Ukraine
+            chartData.datasets[0].data.push(passengerCount);
+            chartData.datasets[1].data.push(additionalSeatsCount);
+            chartData.datasets[2].data.push(0);
+            chartData.datasets[3].data.push(0);
+        } else { // From EU
+            chartData.datasets[0].data.push(0);
+            chartData.datasets[1].data.push(0);
+            chartData.datasets[2].data.push(passengerCount);
+            chartData.datasets[3].data.push(additionalSeatsCount);
+        }
+    });
+
+    reportDisplayArea.innerHTML = '<canvas id="passengerFlowChartCanvas"></canvas>';
+    const ctx = document.getElementById('passengerFlowChartCanvas').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: chartData,
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    passengerFlowReportSection.querySelector('.print-report-btn').classList.remove('hidden');
+}
 
 function exportAgentReportToExcel() {
     if (!state.lastAgentReportData || state.lastAgentReportData.length === 0) {
@@ -848,11 +1043,11 @@ function handlePrint() {
         .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
         .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
         .departure-report-table td { font-size: 8pt; }
-        .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; }
+        .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; font-size: 10pt; }
         .departure-report-table .phones-cell { width: 1%; white-space: nowrap; }
     `;
 
-    if (state.currentReportType !== 'parcel') {
+    if (state.currentReportType !== 'parcel' && state.currentReportType !== 'passenger-flow') {
         printStyles += `
             @page {
                 @bottom-left {
@@ -894,6 +1089,7 @@ export function updateReportView() {
     const isTripReport = state.currentReportType === 'trip';
     const isParcelReport = state.currentReportType === 'parcel';
     const isAgentReport = state.currentReportType === 'agent';
+    const isPassengerFlowReport = state.currentReportType === 'passenger-flow';
 
     reportTypeTripBtn.classList.toggle('border-blue-500', isTripReport);
     reportTypeTripBtn.classList.toggle('text-blue-600', isTripReport);
@@ -907,9 +1103,14 @@ export function updateReportView() {
     reportTypeAgentBtn.classList.toggle('text-blue-600', isAgentReport);
     reportTypeAgentBtn.classList.toggle('text-gray-500', !isAgentReport);
 
+    reportTypePassengerFlowBtn.classList.toggle('border-blue-500', isPassengerFlowReport);
+    reportTypePassengerFlowBtn.classList.toggle('text-blue-600', isPassengerFlowReport);
+    reportTypePassengerFlowBtn.classList.toggle('text-gray-500', !isPassengerFlowReport);
+
     tripReportsSection.classList.toggle('hidden', !isTripReport);
     parcelReportsSection.classList.toggle('hidden', !isParcelReport);
     agentReportSection.classList.toggle('hidden', !isAgentReport);
+    passengerFlowReportSection.classList.toggle('hidden', !isPassengerFlowReport);
 
     reportDisplayArea.innerHTML = '';
     exportExcelBtn.classList.add('hidden');
@@ -933,10 +1134,14 @@ export function initReportsView() {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 <span>Звіт по агентах</span>
             </button>
+            <button id="report-type-passenger-flow" class="report-type-btn py-2 px-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                <span>Пасажиропотік</span>
+            </button>
         </div>
         
         <div id="trip-reports-section">
-            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+             <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div class="flex items-center">
                     <label for="reports-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
                     <div class="relative">
@@ -1030,6 +1235,33 @@ export function initReportsView() {
                 </div>
             </div>
         </div>
+
+        <div id="passenger-flow-report-section" class="hidden">
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label for="passenger-flow-start-date" class="text-sm font-medium">З:</label>
+                    <input type="text" id="passenger-flow-start-date" class="p-2 border border-gray-300 rounded-md w-32 date-input-mask" placeholder="дд.мм.рр">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label for="passenger-flow-end-date" class="text-sm font-medium">По:</label>
+                    <input type="text" id="passenger-flow-end-date" class="p-2 border border-gray-300 rounded-md w-32 date-input-mask" placeholder="дд.мм.рр">
+                </div>
+                <button id="generate-passenger-flow-report-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>Сформувати</span>
+                </button>
+                <button id="generate-passenger-flow-chart-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" /></svg>
+                    <span>Діаграма</span>
+                </button>
+                <div class="ml-auto flex items-center gap-2">
+                    <button class="print-report-btn hidden ml-auto bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zM1 7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1zm3 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4z"/></svg>
+                        <span>Друк</span>
+                    </button>
+                </div>
+            </div>
+        </div>
         
         <div id="report-display-area" class="mt-6 border-t border-gray-200 pt-4"></div>
     </div>`;
@@ -1038,9 +1270,11 @@ export function initReportsView() {
     reportTypeTripBtn = document.getElementById('report-type-trip');
     reportTypeParcelBtn = document.getElementById('report-type-parcel');
     reportTypeAgentBtn = document.getElementById('report-type-agent');
+    reportTypePassengerFlowBtn = document.getElementById('report-type-passenger-flow');
     tripReportsSection = document.getElementById('trip-reports-section');
     parcelReportsSection = document.getElementById('parcel-reports-section');
     agentReportSection = document.getElementById('agent-report-section');
+    passengerFlowReportSection = document.getElementById('passenger-flow-report-section');
     generateCallListBtn = document.getElementById('generate-call-list-btn');
     generateDepartureListBtn = document.getElementById('generate-departure-list-btn');
     generateArrivalListBtn = document.getElementById('generate-arrival-list-btn');
@@ -1051,6 +1285,8 @@ export function initReportsView() {
     generateNovaPoshtaReportBtn = document.getElementById('generate-nova-poshta-report-btn');
     generateParcelArrivalCitiesReportBtn = document.getElementById('generate-parcel-arrival-cities-report-btn');
     generateAgentReportBtn = document.getElementById('generate-agent-report-btn');
+    generatePassengerFlowReportBtn = document.getElementById('generate-passenger-flow-report-btn');
+    generatePassengerFlowChartBtn = document.getElementById('generate-passenger-flow-chart-btn');
     exportExcelBtn = document.getElementById('export-excel-btn');
     reportDisplayArea = document.getElementById('report-display-area');
 
@@ -1058,6 +1294,7 @@ export function initReportsView() {
     reportTypeTripBtn.addEventListener('click', () => { state.currentReportType = 'trip'; updateReportView(); });
     reportTypeParcelBtn.addEventListener('click', () => { state.currentReportType = 'parcel'; updateReportView(); });
     reportTypeAgentBtn.addEventListener('click', () => { state.currentReportType = 'agent'; updateReportView(); });
+    reportTypePassengerFlowBtn.addEventListener('click', () => { state.currentReportType = 'passenger-flow'; updateReportView(); });
 
     generateCallListBtn.addEventListener('click', generateCallListReport);
     generateDepartureListBtn.addEventListener('click', generateDepartureReport);
@@ -1071,6 +1308,8 @@ export function initReportsView() {
     generateParcelArrivalCitiesReportBtn.addEventListener('click', generateParcelArrivalCitiesReport);
 
     generateAgentReportBtn.addEventListener('click', generateAgentReport);
+    generatePassengerFlowReportBtn.addEventListener('click', generatePassengerFlowReport);
+    generatePassengerFlowChartBtn.addEventListener('click', generatePassengerFlowChart);
 
     exportExcelBtn.addEventListener('click', exportAgentReportToExcel);
 
@@ -1083,4 +1322,6 @@ export function initReportsView() {
     // Initialize date pickers
     new Datepicker(document.getElementById('start-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
     new Datepicker(document.getElementById('end-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    new Datepicker(document.getElementById('passenger-flow-start-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    new Datepicker(document.getElementById('passenger-flow-end-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
 }

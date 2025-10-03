@@ -144,13 +144,26 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                 if (activeIndex > -1 && items[activeIndex]) {
                     items[activeIndex].click();
                 } else {
-                    const perfectMatch = (state.collections[collectionName] || []).find(item => 
+                    const perfectMatch = (state.collections[collectionName] || []).find(item =>
                         getDisplayValue(collectionName, key, item.id).toLowerCase() === input.value.trim().toLowerCase()
                     );
                     if (perfectMatch) {
                         onSelect(perfectMatch.id, getDisplayValue(collectionName, key, perfectMatch.id));
+                        moveToNextField();
+                    } else if (input.value.trim() !== '') {
+                        // Якщо точного збігу немає і щось введено, відкриваємо модальне вікно створення
+                        resultsContainer.classList.add('hidden');
+                        const defaultName = DIRECTORIES[collectionName].fields.Name ? { Name: input.value } : {};
+                        openDirectoryModal(collectionName, null, defaultName, (newItem) => {
+                            if (newItem?.id) {
+                                const displayName = newItem.Name || newItem.Plate || getDisplayValue(collectionName, key, newItem.id);
+                                onSelect(newItem.id, displayName);
+                                moveToNextField();
+                            }
+                        });
+                    } else {
+                        moveToNextField();
                     }
-                    moveToNextField();
                 }
                 break;
             case 'F4':

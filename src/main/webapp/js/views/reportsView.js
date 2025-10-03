@@ -268,11 +268,11 @@ function generateKropyvnytskyiReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Кропивницький</h3>
+                            <h3 style="font-weight: bold; margin: 0;">Кропивницький</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -283,9 +283,9 @@ function generateKropyvnytskyiReport() {
         reportHTML += '<p class="text-center text-gray-500">Посилок до м. Кропивницький для цього рейсу не знайдено.</p>';
     } else {
         reportHTML += `
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
-                 <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000; font-size: 10pt;">
+                 <tr style="font-weight: normal; text-align: center;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім\'я клієнта</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
@@ -340,11 +340,11 @@ function generateNovaPoshtaReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Нова Пошта</h3>
+                            <h3 style="font-weight: bold; margin: 0;">Нова Пошта</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -355,9 +355,9 @@ function generateNovaPoshtaReport() {
         reportHTML += '<p class="text-center text-gray-500">Посилок з вказаною Новою Поштою для цього рейсу не знайдено.</p>';
     } else {
         reportHTML += `
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000;">
-                 <tr style="font-weight: normal; text-align: center; font-size: 12pt;">
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000; font-size: 10pt;">
+                 <tr style="font-weight: normal; text-align: center;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Ім\'я клієнта</th>
                     <th style="padding: 4px; font-weight: normal; text-align: center; border: none;">Телефон</th>
@@ -434,11 +434,11 @@ function generateParcelArrivalCitiesReport() {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-size: 12pt; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
-                            <h3 style="font-size: 14pt; font-weight: bold; margin: 0;">Отримання за містами</h3>
+                            <h3 style="font-weight: bold; margin: 0;">Отримання за містами</h3>
                         </td>
                     </tr>
                 </tbody>
@@ -449,14 +449,14 @@ function generateParcelArrivalCitiesReport() {
         reportHTML += '<p class="text-center text-gray-500">Посилок (без вказаної Нової Пошти та м. Кропивницький) для цього рейсу не знайдено.</p>';
     } else {
         reportHTML += `
-        <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
             <tbody>`;
 
         sortedGroupKeys.forEach((townId, groupIndex) => {
             const group = groupedByTown[townId];
             const townName = group.town?.Name || 'Невідомо';
 
-            reportHTML += `<tr class="group-header-row"><td colspan="6" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 12pt;">${townName}</td></tr>`;
+            reportHTML += `<tr class="group-header-row"><td colspan="6" style="border-bottom: 1px solid #000; padding: 2px 4px; font-weight: bold; text-align: right; font-size: 10pt;">${townName}</td></tr>`;
 
             const groupParcels = group.parcels;
             groupParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
@@ -534,7 +534,6 @@ function generateCallListReport() {
                 const telUA = p.client?.TelUA ? `+38${p.client.TelUA}` : '';
                 const telEU = p.client?.TelEU ? `+39${p.client.TelEU}` : '';
                 const phones = [telUA, telEU].filter(Boolean).join(', ');
-
                 reportHTML += `
                 <tr class="passenger-row">
                     <td style="width: 5%;">${index + 1}. ${statusMarker}</td>
@@ -575,7 +574,7 @@ function generateDepartureReport() {
     let passengerThroughCount = 0;
     sortedGroupKeys.forEach(stationId => {
         const group = groupedByStation[stationId];
-        tableBodyHTML += `<tr class="group-header-row"><td colspan="4" style="text-align: right; padding: 4px; font-size: 9pt;">${group.name} <strong>${group.time}</strong></td></tr>`;
+        tableBodyHTML += `<tr class="group-header-row"><td colspan="4" style="text-align: right; padding: 4px; font-size: 10pt;">${group.name} <strong>${group.time}</strong></td></tr>`;
         group.passengers.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
         group.passengers.forEach((p, index) => {
             passengerThroughCount++;
@@ -583,6 +582,7 @@ function generateDepartureReport() {
             const telUA = (p.client?.TelUA || '').split(',')[0].trim();
             const telEU = (p.client?.TelEU || '').split(',')[0].trim();
             const phones = [telUA, telEU].filter(Boolean).join(', ');
+            const agentName = p.AgentId ? ` <span style="font-size: 8pt; color: #555;">(${(state.collections.Agents.find(a => a.id === p.AgentId) || {}).Name || ''})</span>` : '';
 
             tableBodyHTML += `
                 <tr class="passenger-row">
@@ -591,7 +591,7 @@ function generateDepartureReport() {
                         <div>${statusLine}</div>
                     </td>
                     <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%;">
-                        <div> ${p.client?.Name || ''}${p.AgentId ? ` <span style="font-size: 8pt; color: #555;">(${(state.collections.Agents.find(a => a.id === p.AgentId) || {}).Name || ''})</span>` : ''}</div>
+                        <div style="font-size: 10pt;">${p.client?.Name || ''}${agentName}</div>
                         <div style="font-size: 8pt;">${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове місце!</strong>' : ''}</div>
                     </td>
                     <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">
@@ -607,7 +607,7 @@ function generateDepartureReport() {
 
     const additionalSeatsCount = passengers.filter(p => p.Place).length;
     reportDisplayArea.innerHTML = `
-        <div class="report-header" style="margin-bottom: 0.25rem;">
+        <div class="report-header" style="font-size: 11pt; margin-bottom: 0.25rem;">
             <div class="report-header-flex-row">
                 <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
                 <span style="text-align: right;">${route?.Name || ''}</span>
@@ -652,20 +652,20 @@ function generateArrivalReport() {
         group.passengers.forEach((p, index) => {
             passengerThroughCount++;
             const isFirstInGroup = index === 0;
-            const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap; font-size: 8pt;"><strong>${group.time}</strong> ${group.name}</div>` : '';
+            const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap; font-size: 10pt;"><strong>${group.time}</strong> ${group.name}</div>` : '';
             tableBodyHTML += `
                 <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
-                    <td style="width: 25%; font-size: 8pt;">${stationCellContent}</td>
-                    <td style="width: 10%; text-align: center; font-size: 8pt;">${index + 1} / <strong>${passengerThroughCount}</strong></td>
-                    <td style="width: 30%; font-size: 8pt;">${p.client?.Name || ''}</td>
-                    <td style="width: 20%; font-size: 8pt;">${p.townEnd?.Name || ''}</td>
-                    <td style="width: 15%; font-size: 8pt;"></td>
+                    <td style="width: 25%;">${stationCellContent}</td>
+                    <td style="width: 10%; text-align: center;">${index + 1} / <strong>${passengerThroughCount}</strong></td>
+                    <td style="width: 30%; font-size: 10pt;">${p.client?.Name || ''}</td>
+                    <td style="width: 20%;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 15%;"></td>
                 </tr>`;
         });
     });
 
     reportDisplayArea.innerHTML = `
-        <div class="report-header">
+        <div class="report-header" style="font-size: 11pt;">
              <div class="report-header-flex-row">
                 <span><strong>${bus?.Plate || ''}</strong> ${bus?.Name || ''}</span>
                 <span style="text-align: right;">${route?.Name || ''}</span>
@@ -675,7 +675,7 @@ function generateArrivalReport() {
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <table class="report-table" style="font-size: 8pt;"><tbody>${tableBodyHTML}</tbody></table>`;
+        <table class="report-table" style="font-size: 9pt;"><tbody>${tableBodyHTML}</tbody></table>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -706,8 +706,8 @@ function generateTransitReport() {
             </div>
         </div>
         <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="font-size: 10pt; text-align: left;">
+            <thead style="font-size: 10pt;">
+                <tr style="text-align: left;">
                     <th style="width: 5%; padding: 4px; border-bottom: 1px solid #000;">№</th>
                     <th style="width: 25%; padding: 4px; border-bottom: 1px solid #000;">Ім'я</th>
                     <th style="width: 30%; padding: 4px; border-bottom: 1px solid #000;">Маршрут</th>
@@ -800,21 +800,21 @@ function generateAgentReport() {
         let count = 0;
         Object.keys(groupedData).forEach(agentId => {
             const agentName = agentId === 'none' ? 'Без агента' : (state.collections.Agents.find(a => a.id === agentId)?.Name || 'Невідомий');
-            tableRows += `<tr class="group-header-row" style="font-size: 12pt;"><td colspan="5">${agentName}</td></tr>`;
+            tableRows += `<tr class="group-header-row" style="font-size: 10pt;"><td colspan="5">${agentName}</td></tr>`;
             groupedData[agentId].forEach(item => {
                 count++;
-                tableRows += `<tr style="font-size: 8pt;"><td>${count}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
+                tableRows += `<tr style="font-size: 9pt;"><td>${count}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
             });
         });
     } else {
         reportData.forEach((item, index) => {
-            tableRows += `<tr style="font-size: 8pt;"><td>${index + 1}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
+            tableRows += `<tr style="font-size: 9pt;"><td>${index + 1}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
         });
     }
 
     reportDisplayArea.innerHTML = reportData.length > 0
-        ? `<h3 class="font-semibold text-lg mb-4">${headerText}</h3>
-           <table><thead><tr style="font-size: 12pt;"><th>№</th><th>Дата рейсу</th><th>Пасажир</th><th>Відправка</th><th>Прибуття</th></tr></thead><tbody>${tableRows}</tbody></table>`
+        ? `<h3 class="font-semibold text-lg mb-4" style="font-size: 11pt;">${headerText}</h3>
+           <table style="font-size: 9pt;"><thead><tr style="font-size: 12pt;"><th>№</th><th>Дата рейсу</th><th>Пасажир</th><th>Відправка</th><th>Прибуття</th></tr></thead><tbody>${tableRows}</tbody></table>`
         : '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
 
     exportExcelBtn.classList.toggle('hidden', reportData.length === 0);
@@ -843,6 +843,7 @@ function generatePassengerFlowReport() {
 
         const passengerCount = activePassengers.length;
         const additionalSeatsCount = activePassengers.filter(p => p.Place).length;
+        const ticketCount = activePassengers.filter(p => p.Ticket).length;
         const canceledCount = passengersForTrip.length - activePassengers.length;
 
         return {
@@ -850,25 +851,27 @@ function generatePassengerFlowReport() {
             routeName: (state.collections.Routes || []).find(r => r.id === trip.RouteId)?.Name || 'N/A',
             passengerCount: passengerCount,
             additionalSeatsCount: additionalSeatsCount,
+            ticketCount: ticketCount,
             canceledCount: canceledCount
         };
     });
 
     reportData.sort((a, b) => parseDateString(a.date).getTime() - parseDateString(b.date).getTime());
 
-    let reportHTML = `<h3 class="font-semibold text-lg mb-4">Пасажиропотік за період з ${startDateInput.value} по ${endDateInput.value}</h3>`;
+    let reportHTML = `<h3 class="font-semibold text-lg mb-4" style="font-size: 11pt;">Пасажиропотік за період з ${startDateInput.value} по ${endDateInput.value}</h3>`;
 
     if (reportData.length === 0) {
         reportHTML += '<p class="text-center text-gray-500">Дані за обраний період відсутні.</p>';
     } else {
         reportHTML += `
-            <table class="report-table" style="font-size: 8pt; width: 100%; border-collapse: collapse;">
-                <thead style="background-color: #f2f2f2; font-size: 12pt;">
+            <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">
+                <thead style="background-color: #f2f2f2; font-size: 10pt;">
                     <tr>
                         <th style="padding: 4px; border-bottom: 1px solid #000;">Дата</th>
                         <th style="padding: 4px; border-bottom: 1px solid #000;">Рейс</th>
                         <th style="padding: 4px; border-bottom: 1px solid #000;">К-ть пасажирів</th>
                         <th style="padding: 4px; border-bottom: 1px solid #000;">Дод. місця</th>
+                        <th style="padding: 4px; border-bottom: 1px solid #000;">Квитки</th>
                         <th style="padding: 4px; border-bottom: 1px solid #000;">Скасовані</th>
                     </tr>
                 </thead>
@@ -879,6 +882,7 @@ function generatePassengerFlowReport() {
                             <td style="padding: 4px;">${item.routeName}</td>
                             <td style="padding: 4px; text-align: center;">${item.passengerCount || ''}</td>
                             <td style="padding: 4px; text-align: center;">${item.additionalSeatsCount || ''}</td>
+                            <td style="padding: 4px; text-align: center;">${item.ticketCount || ''}</td>
                             <td style="padding: 4px; text-align: center;">${item.canceledCount || ''}</td>
                         </tr>
                     `).join('')}
@@ -912,28 +916,40 @@ function generatePassengerFlowChart() {
         labels: [],
         datasets: [
             {
-                label: 'З України',
+                label: 'Пасажири з квитком (з Укр)',
                 data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                stack: 'Stack 0',
+                backgroundColor: 'rgba(54, 162, 235, 1.0)', // Dark Blue
+                stack: 'Ukraine',
+            },
+            {
+                label: 'Пасажири без квитка (з Укр)',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)', // Base Blue
+                stack: 'Ukraine',
             },
             {
                 label: 'Дод. місця (з Укр)',
                 data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.3)',
-                stack: 'Stack 0',
+                backgroundColor: 'rgba(54, 162, 235, 0.3)', // Light Blue
+                stack: 'Ukraine',
             },
             {
-                label: 'З ЄС',
+                label: 'Пасажири з квитком (з ЄС)',
                 data: [],
-                backgroundColor: 'rgba(255, 206, 86, 0.6)',
-                stack: 'Stack 1',
+                backgroundColor: 'rgba(255, 206, 86, 1.0)', // Dark Yellow
+                stack: 'EU',
+            },
+            {
+                label: 'Пасажири без квитка (з ЄС)',
+                data: [],
+                backgroundColor: 'rgba(255, 206, 86, 0.6)', // Base Yellow
+                stack: 'EU',
             },
             {
                 label: 'Дод. місця (з ЄС)',
                 data: [],
-                backgroundColor: 'rgba(255, 206, 86, 0.3)',
-                stack: 'Stack 1',
+                backgroundColor: 'rgba(255, 206, 86, 0.3)', // Light Yellow
+                stack: 'EU',
             }
         ]
     };
@@ -943,21 +959,26 @@ function generatePassengerFlowChart() {
         const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
         const activePassengers = (state.collections.Passengers || []).filter(p => p.TripId === trip.id && !p.Canceled);
 
-        const passengerCount = activePassengers.length;
+        const ticketCount = activePassengers.filter(p => p.Ticket).length;
+        const noTicketCount = activePassengers.length - ticketCount;
         const additionalSeatsCount = activePassengers.filter(p => p.Place).length;
 
         chartData.labels.push(formatDate(trip.Date, 'dd.mm'));
 
         if (country?.Cod === 0) { // From Ukraine
-            chartData.datasets[0].data.push(passengerCount);
-            chartData.datasets[1].data.push(additionalSeatsCount);
-            chartData.datasets[2].data.push(0);
+            chartData.datasets[0].data.push(ticketCount);
+            chartData.datasets[1].data.push(noTicketCount);
+            chartData.datasets[2].data.push(additionalSeatsCount);
             chartData.datasets[3].data.push(0);
+            chartData.datasets[4].data.push(0);
+            chartData.datasets[5].data.push(0);
         } else { // From EU
             chartData.datasets[0].data.push(0);
             chartData.datasets[1].data.push(0);
-            chartData.datasets[2].data.push(passengerCount);
-            chartData.datasets[3].data.push(additionalSeatsCount);
+            chartData.datasets[2].data.push(0);
+            chartData.datasets[3].data.push(ticketCount);
+            chartData.datasets[4].data.push(noTicketCount);
+            chartData.datasets[5].data.push(additionalSeatsCount);
         }
     });
 
@@ -971,11 +992,35 @@ function generatePassengerFlowChart() {
             responsive: true,
             scales: {
                 x: {
-                    stacked: true,
+                    stacked: false,
                 },
                 y: {
                     stacked: true,
                     beginAtZero: true
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            const label = tooltipItem.dataset.label || '';
+                            if (label.includes('Пасажири без квитка')) {
+                                const dataIndex = tooltipItem.dataIndex;
+                                const datasets = tooltipItem.chart.data.datasets;
+                                let ticketCount = 0;
+                                let noTicketCount = tooltipItem.raw;
+
+                                if (label.includes('(з Укр)')) {
+                                    ticketCount = datasets[0].data[dataIndex];
+                                } else if (label.includes('(з ЄС)')) {
+                                    ticketCount = datasets[3].data[dataIndex];
+                                }
+                                const total = ticketCount + noTicketCount;
+                                return `Всього пасажирів: ${total}`;
+                            }
+                            return ` ${label}: ${tooltipItem.raw}`;
+                        }
+                    }
                 }
             }
         }
@@ -983,6 +1028,7 @@ function generatePassengerFlowChart() {
 
     passengerFlowReportSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
+
 
 function exportAgentReportToExcel() {
     if (!state.lastAgentReportData || state.lastAgentReportData.length === 0) {
@@ -1042,7 +1088,7 @@ function handlePrint() {
         .report-table td { border: none; padding: 2px 4px; vertical-align: top; }
         .report-table tr.passenger-row { border-bottom: 1px solid #ccc; }
         .report-table tr.group-header-row td { background-color: #f8f9fa !important; border-bottom: 2px solid #000; }
-        .departure-report-table td { font-size: 8pt; }
+        .departure-report-table td { font-size: 9pt; }
         .departure-report-table .passenger-name-cell { border-left: 1px solid #ccc; border-right: 1px solid #ccc; font-size: 10pt; }
         .departure-report-table .phones-cell { width: 1%; white-space: nowrap; }
     `;
@@ -1235,7 +1281,7 @@ export function initReportsView() {
                 </div>
             </div>
         </div>
-
+        
         <div id="passenger-flow-report-section" class="hidden">
             <div class="flex flex-wrap items-center gap-4">
                 <div class="flex items-center gap-2">

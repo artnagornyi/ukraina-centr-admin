@@ -2,23 +2,23 @@
 import { db } from '../firebase.js';
 import { doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { state, DIRECTORIES } from '../state.js';
-import { getDisplayValue, getNextSelectable } from '../utils.js';
-import { openDirectoryModal, openConfirmModal } from '../ui/modal.js';
+import { getDisplayValue } from '../utils.js';
+import { openDirectoryModal, openConfirmModal, openInfoModal } from '../ui/modal.js';
 
 let directoriesPageView, directoryTabs, directoryTitle, directoryRecordCount, directorySearchInput, addDirectoryItemBtn, directoryTableContainer, stationCountryFilter;
 
 state.selectedDirectoryItemId = null;
 
 const DIRECTORY_ICONS = {
-    Clients: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
-    Trips: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
-    Routes: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m-6 3l6-3" /></svg>`,
-    Buses: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V8z" /></svg>`,
-    Drivers: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`,
-    Agents: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
-    Stations: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
-    Towns: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>`,
-    Country: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>`,
+    Clients: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`,
+    Trips: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+    Routes: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m-6 3l6-3" /></svg>`,
+    Buses: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V8z" /></svg>`,
+    Drivers: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`,
+    Agents: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+    Stations: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+    Towns: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>`,
+    Country: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>`,
 };
 
 function scrollToSelected() {
@@ -98,7 +98,7 @@ function renderDirectoryTable() {
     const directory = DIRECTORIES[state.currentDirectory];
     const allData = (state.collections[state.currentDirectory] || []);
     directoryRecordCount.textContent = `Всього: ${allData.length}`;
-    
+
     let data = [...allData];
 
     if (['Stations', 'Towns'].includes(state.currentDirectory) && state.stationCountryFilter && state.stationCountryFilter !== 'all') {
@@ -159,12 +159,11 @@ function renderDirectoryTable() {
             if (state.currentDirectory === 'Stations' && fieldKey === 'Cod') {
                 return `<td class="p-1"><input type="text" value="${item[fieldKey] || ''}" data-id="${item.id}" data-key="Cod" class="w-20 p-2 border border-gray-200 rounded-md text-center cod-input"></td>`;
             }
-            // Додано блок для обробки поля "Карта"
             if (state.currentDirectory === 'Stations' && fieldKey === 'Map') {
                 if (item.Map) {
                     return `<td class="p-3 text-sm text-center"><a href="${item.Map}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700" title="Відкрити на карті">📍</a></td>`;
                 } else {
-                    return '<td class="p-3 text-sm"></td>'; // Порожня комірка, якщо посилання немає
+                    return '<td class="p-3 text-sm"></td>';
                 }
             }
             return `<td class="p-3 text-sm">${getDisplayValue(state.currentDirectory, fieldKey, item[fieldKey])}</td>`;
@@ -203,11 +202,21 @@ function handleKeyboardNavigation(e) {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
 
-    const direction = e.key === 'ArrowDown' ? 'down' : 'up';
-    const { nextId, nextRow } = getNextSelectable(rows, state.selectedDirectoryItemId, direction);
+    let currentIndex = -1;
+    if (state.selectedDirectoryItemId) {
+        currentIndex = rows.findIndex(row => row.dataset.id === state.selectedDirectoryItemId);
+    }
 
+    let nextIndex = currentIndex;
+    if (e.key === 'ArrowDown') {
+        nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
+    }
+
+    const nextRow = rows[nextIndex];
     if (nextRow) {
-        state.selectedDirectoryItemId = nextId;
+        state.selectedDirectoryItemId = nextRow.dataset.id;
         updateRowHighlights();
         nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -217,10 +226,17 @@ export function initDirectoriesView() {
     directoriesPageView = document.getElementById('directories-page-view');
     directoriesPageView.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow-md mb-4">
-            <div id="directory-tabs" class="flex flex-wrap gap-2 border-b border-gray-200 pb-2 mb-4"></div>
+            <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-4">
+                <div id="directory-tabs" class="flex flex-wrap gap-2"></div>
+                <button id="backup-db-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>Резервна копія</span>
+                </button>
+            </div>
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center">
                     <h2 id="directory-title" class="text-2xl font-bold"></h2>
+                    <span id="directory-record-count" class="text-sm text-gray-500 font-semibold ml-4"></span>
                 </div>
                 <div class="flex items-center gap-4 flex-grow mx-4">
                     <div id="station-filter-container" class="items-center hidden">
@@ -230,11 +246,12 @@ export function initDirectoriesView() {
                     <label for="directory-search-input" class="sr-only">Пошук у довіднику</label>
                     <input type="text" id="directory-search-input" placeholder="Пошук (F7)..." class="w-full p-2 border border-gray-300 rounded-md">
                 </div>
-                <span id="directory-record-count" class="text-sm text-gray-500 font-semibold mr-4"></span>
-                <button id="add-directory-item-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <span>Додати запис</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="add-directory-item-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <span>Додати запис</span>
+                    </button>
+                </div>
             </div>
             <div id="directory-table-container" class="overflow-x-auto"></div>
         </div>`;
@@ -246,6 +263,7 @@ export function initDirectoriesView() {
     addDirectoryItemBtn = document.getElementById('add-directory-item-btn');
     directoryTableContainer = document.getElementById('directory-table-container');
     stationCountryFilter = document.getElementById('station-country-filter');
+    const backupDbBtn = document.getElementById('backup-db-btn');
 
     renderDirectoryTabs();
 
@@ -270,6 +288,8 @@ export function initDirectoriesView() {
     addDirectoryItemBtn.addEventListener('click', () => {
         openDirectoryModal(state.currentDirectory);
     });
+
+    backupDbBtn.addEventListener('click', handleBackup);
 
     directorySearchInput.addEventListener('input', (e) => {
         state.directorySearchTerm = e.target.value;
@@ -315,9 +335,9 @@ export function initDirectoriesView() {
                     });
                 }
             }
-            return; 
+            return;
         }
-        
+
         state.selectedDirectoryItemId = id;
         updateRowHighlights();
     });
@@ -349,4 +369,41 @@ export function initDirectoriesView() {
     }, true);
 
     document.addEventListener('keydown', handleKeyboardNavigation);
+}
+
+function handleBackup() {
+    try {
+        const dataToBackup = { ...state.collections };
+
+        const jsonData = JSON.stringify(dataToBackup, (key, value) => {
+            if (value && typeof value === 'object' && value.seconds) {
+                return new Date(value.seconds * 1000).toISOString();
+            }
+            return value;
+        }, 2);
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const filename = `backup-${year}-${month}-${day}.json`;
+
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        openInfoModal('Резервну копію успішно створено та завантажено.');
+
+    } catch (error) {
+        console.error("Помилка створення резервної копії:", error);
+        openInfoModal(`Не вдалося створити резервну копію: ${error.message}`);
+    }
 }

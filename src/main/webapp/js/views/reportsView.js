@@ -591,7 +591,7 @@ function generateDepartureReport() {
                         <div>${statusLine}</div>
                     </td>
                     <td class="passenger-name-cell" style="padding: 2px 4px; vertical-align: top; width: 45%;">
-                        <div style="font-size: 10pt;">${p.client?.Name || ''}</div>
+                        <div> ${p.client?.Name || ''}${p.AgentId ? ` <span style="font-size: 8pt; color: #555;">(${(state.collections.Agents.find(a => a.id === p.AgentId) || {}).Name || ''})</span>` : ''}</div>
                         <div style="font-size: 8pt;">${p.stationEnd?.Name || '—'} ${p.Place ? '<strong>+ додаткове місце!</strong>' : ''}</div>
                     </td>
                     <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">

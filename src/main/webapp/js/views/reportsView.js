@@ -1,6 +1,6 @@
 // js/views/reportsView.js
 import { state } from '../state.js';
-import { formatDate, parseDateString } from '../utils.js';
+import { formatDate, parseDateString, formatDateForInputs } from '../utils.js';
 import { openInfoModal } from '../ui/modal.js';
 
 // Module-level variables for DOM elements
@@ -8,7 +8,8 @@ let reportsPageView, reportTypeTripBtn, reportTypeParcelBtn, reportTypeAgentBtn,
     tripReportsSection, parcelReportsSection, agentReportSection, passengerFlowReportSection,
     generateCallListBtn, generateDepartureListBtn, generateArrivalListBtn, generateTransitListBtn,
     generateRomaReportBtn, generateParcelDepartureCitiesReportBtn, generateKropyvnytskyiReportBtn, generateNovaPoshtaReportBtn, generateParcelArrivalCitiesReportBtn,
-    generateAgentReportBtn, generatePassengerFlowReportBtn, generatePassengerFlowChartBtn, exportExcelBtn, reportDisplayArea;
+    generateAgentReportBtn, generatePassengerFlowReportBtn, generatePassengerFlowChartBtn, exportExcelBtn, reportDisplayArea,
+    agentStartDatepicker, agentEndDatepicker, passengerFlowStartDatepicker, passengerFlowEndDatepicker;
 
 function getTripData(tripId, collectionName = 'Passengers') {
     if (!tripId || tripId === 'all') {
@@ -597,7 +598,7 @@ function generateDepartureReport() {
                     <td style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: middle; text-align: center; width: 15%; font-size: 9pt;">
                         ${p.Ticket ? '<div style="font-size: 8pt; font-weight: bold;">квиток</div>' : ''}
                     </td>
-                    <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; font-size: 9pt;">
+                    <td class="phones-cell" style="border-left: 1px solid #ccc; padding: 2px 4px; vertical-align: top; font-size: 9pt; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         <div>${phones}</div>
                         <div>${p.Note || ''}</div>
                     </td>
@@ -655,11 +656,11 @@ function generateArrivalReport() {
             const stationCellContent = isFirstInGroup ? `<div style="white-space: nowrap; font-size: 10pt;"><strong>${group.time}</strong> ${group.name}</div>` : '';
             tableBodyHTML += `
                 <tr class="passenger-row" ${isFirstInGroup ? 'style="border-top: 2px solid #000;"' : ''}>
-                    <td style="width: 25%;">${stationCellContent}</td>
+                    <td style="width: 25%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${stationCellContent}</td>
                     <td style="width: 10%; text-align: center;">${index + 1} / <strong>${passengerThroughCount}</strong></td>
-                    <td style="width: 30%; font-size: 10pt;">${p.client?.Name || ''}</td>
-                    <td style="width: 20%;">${p.townEnd?.Name || ''}</td>
-                    <td style="width: 15%;"></td>
+                    <td style="width: 30%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10pt;">${p.client?.Name || ''}</td>
+                    <td style="width: 20%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.townEnd?.Name || ''}</td>
+                    <td style="width: 15%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></td>
                 </tr>`;
         });
     });
@@ -675,7 +676,7 @@ function generateArrivalReport() {
                 <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
-        <table class="report-table" style="font-size: 9pt;"><tbody>${tableBodyHTML}</tbody></table>`;
+        <table class="report-table" style="font-size: 8pt;"><tbody>${tableBodyHTML}</tbody></table>`;
     tripReportsSection.querySelector('.print-report-btn').classList.remove('hidden');
 }
 
@@ -746,10 +747,21 @@ function generateAgentReport() {
 
     endDate.setHours(23, 59, 59, 999);
 
-    let passengers = (state.collections.Passengers || []).filter(p => {
-        const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
-        return trip?.Date && trip.Date.toDate() >= startDate && trip.Date.toDate() <= endDate;
+    const tripsInPeriod = (state.collections.Trips || []).filter(trip => {
+        if (trip.Date && typeof trip.Date.toDate === 'function') {
+            const tripDate = trip.Date.toDate();
+            return tripDate >= startDate && tripDate <= endDate;
+        }
+        return false;
     });
+
+    const tripIdsInPeriod = tripsInPeriod.map(t => t.id);
+    const tripsById = tripsInPeriod.reduce((acc, trip) => {
+        acc[trip.id] = trip;
+        return acc;
+    }, {});
+
+    let passengers = (state.collections.Passengers || []).filter(p => tripIdsInPeriod.includes(p.TripId));
 
     const selectedAgentId = agentSelect.value;
     if (selectedAgentId === 'all') {
@@ -760,7 +772,7 @@ function generateAgentReport() {
 
     const reportData = passengers.map(p => {
         const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
-        const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+        const trip = tripsById[p.TripId];
         const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
         const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
         let stationBegin = '—', stationEnd = '—';
@@ -773,7 +785,7 @@ function generateAgentReport() {
         }
 
         return {
-            tripDate: trip ? formatDate(trip.Date, 'dd.mm.yyyy') : 'N/A',
+            tripDate: formatDate(trip.Date, 'dd.mm.yyyy'),
             clientName: client?.Name || 'N/A',
             stationBegin: (stationBegin.split(' ')[0] || '').replace(/,$/, ''),
             stationEnd: (stationEnd.split(' ')[0] || '').replace(/,$/, ''),
@@ -833,8 +845,11 @@ function generatePassengerFlowReport() {
     endDate.setHours(23, 59, 59, 999);
 
     const tripsInPeriod = (state.collections.Trips || []).filter(trip => {
-        const tripDate = trip.Date.toDate();
-        return tripDate >= startDate && tripDate <= endDate;
+        if (trip.Date && typeof trip.Date.toDate === 'function') {
+            const tripDate = trip.Date.toDate();
+            return tripDate >= startDate && tripDate <= endDate;
+        }
+        return false;
     });
 
     const reportData = tripsInPeriod.map(trip => {
@@ -907,8 +922,11 @@ function generatePassengerFlowChart() {
 
     const tripsInPeriod = (state.collections.Trips || [])
         .filter(trip => {
-            const tripDate = trip.Date.toDate();
-            return tripDate >= startDate && tripDate <= endDate;
+            if (trip.Date && typeof trip.Date.toDate === 'function') {
+                const tripDate = trip.Date.toDate();
+                return tripDate >= startDate && tripDate <= endDate;
+            }
+            return false;
         })
         .sort((a, b) => a.Date.seconds - b.Date.seconds);
 
@@ -1158,6 +1176,22 @@ export function updateReportView() {
     agentReportSection.classList.toggle('hidden', !isAgentReport);
     passengerFlowReportSection.classList.toggle('hidden', !isPassengerFlowReport);
 
+    // --- Set default dates ---
+    if (isAgentReport) {
+        const now = new Date();
+        const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        if (agentStartDatepicker) agentStartDatepicker.setDate(firstDayOfLastMonth);
+        if (agentEndDatepicker) agentEndDatepicker.setDate(lastDayOfLastMonth);
+    } else if (isPassengerFlowReport) {
+        const now = new Date();
+        const firstDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        if (passengerFlowStartDatepicker) passengerFlowStartDatepicker.setDate(firstDayOfCurrentMonth);
+        if (passengerFlowEndDatepicker) passengerFlowEndDatepicker.setDate(lastDayOfCurrentMonth);
+    }
+    // -----------------------------------------
+
     reportDisplayArea.innerHTML = '';
     exportExcelBtn.classList.add('hidden');
     reportsPageView.querySelectorAll('.print-report-btn').forEach(btn => btn.classList.add('hidden'));
@@ -1366,8 +1400,8 @@ export function initReportsView() {
     });
 
     // Initialize date pickers
-    new Datepicker(document.getElementById('start-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
-    new Datepicker(document.getElementById('end-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
-    new Datepicker(document.getElementById('passenger-flow-start-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
-    new Datepicker(document.getElementById('passenger-flow-end-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    agentStartDatepicker = new Datepicker(document.getElementById('start-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    agentEndDatepicker = new Datepicker(document.getElementById('end-date-filter'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    passengerFlowStartDatepicker = new Datepicker(document.getElementById('passenger-flow-start-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
+    passengerFlowEndDatepicker = new Datepicker(document.getElementById('passenger-flow-end-date'), { format: 'dd.mm.yy', autohide: true, language: 'uk', weekStart: 1 });
 }

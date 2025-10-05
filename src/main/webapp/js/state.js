@@ -88,6 +88,7 @@ export const DIRECTORIES = {
         singularTitle: 'агента',
         fields: {
             Name: { label: "Ім'я", type: 'text', required: true },
+            PaymentDate: { label: 'Розрахунок', type: 'date' },
         }
     },
     Stations: {

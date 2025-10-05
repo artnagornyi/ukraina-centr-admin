@@ -1,7 +1,7 @@
 // js/views/reports/agentPassengerFlowReports.js
-import { state } from '../../state.js';
-import { formatDate, parseDateString } from '../../utils.js';
-import { openInfoModal } from '../../ui/modal.js';
+import { state } from '/js/state.js';
+import { formatDate, parseDateString } from '/js/utils.js';
+import { openInfoModal } from '/js/ui/modal.js';
 
 export function generateAgentReport(reportDisplayArea, agentReportSection, exportExcelBtn) {
     const agentSelect = document.getElementById('agent-filter-select');

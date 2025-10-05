@@ -1,6 +1,6 @@
 // js/views/reports/parcelReports.js
-import { state } from '../../state.js';
-import { getTripData, formatDate } from '../../utils.js';
+import { state } from '/js/state.js';
+import { getTripData, formatDate } from '/js/utils.js';
 
 export function generateRomaReport(reportDisplayArea, parcelReportsSection) {
     const data = getTripData(state.selectedTripId, 'Parcels');

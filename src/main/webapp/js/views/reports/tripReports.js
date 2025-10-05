@@ -1,6 +1,6 @@
 // js/views/reports/tripReports.js
-import { state } from '../../state.js';
-import { getTripData, formatDate } from '../../utils.js';
+import { state } from '/js/state.js';
+import { getTripData, formatDate } from '/js/utils.js';
 
 export function generateCallListReport(reportDisplayArea, tripReportsSection) {
     const data = getTripData(state.selectedTripId, 'Passengers');

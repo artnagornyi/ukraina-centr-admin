@@ -1,5 +1,6 @@
 // js/utils.js
 import { state, FK_MAP } from './state.js';
+import { openInfoModal } from './ui/modal.js';
 
 export function formatDateForInputs(date) {
     const day = String(date.getDate()).padStart(2, '0');
@@ -79,4 +80,63 @@ export function getNextSelectable(rows, currentSelectedId, direction) {
     const nextId = nextRow ? nextRow.dataset.id : null;
 
     return { nextId, nextRow };
+}
+
+export function getTripData(tripId, collectionName = 'Passengers') {
+    if (!tripId || tripId === 'all') {
+        openInfoModal('Будь ласка, оберіть конкретний рейс для формування звіту.');
+        return null;
+    }
+    const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+    if (!trip) {
+        openInfoModal("Помилка: не вдалося знайти обраний рейс.");
+        return null;
+    }
+
+    const route = (state.collections.Routes || []).find(r => r.id === trip.RouteId);
+    const bus = (state.collections.Buses || []).find(b => b.id === trip.BusId);
+    const driver = (state.collections.Drivers || []).find(d => d.id === trip.DriverId);
+    const country = route ? (state.collections.Country || []).find(cy => cy.id === route.CountryId) : null;
+
+    let items = [];
+    if (collectionName === 'Passengers') {
+        items = (state.collections.Passengers || [])
+            .filter(p => p.TripId === tripId && !p.Canceled)
+            .map(p => {
+                const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
+                const stationBeginId = client ? (country?.Cod === 0 ? client.StationIdUA : client.StationIdEU) : null;
+                const stationEndId = client ? (country?.Cod === 0 ? client.StationIdEU : client.StationIdUA) : null;
+                const townBeginId = client ? (country?.Cod === 0 ? client.TownIdUA : client.TownIdEU) : null;
+                const townEndId = client ? (country?.Cod === 0 ? client.TownIdEU : client.TownIdUA) : null;
+                return {
+                    ...p,
+                    client,
+                    stationBegin: (state.collections.Stations || []).find(s => s.id === stationBeginId),
+                    stationEnd: (state.collections.Stations || []).find(s => s.id === stationEndId),
+                    townBegin: (state.collections.Towns || []).find(t => t.id === townBeginId),
+                    townEnd: (state.collections.Towns || []).find(t => t.id === townEndId)
+                };
+            });
+    } else if (collectionName === 'Parcels') {
+        items = (state.collections.Parcels || [])
+            .filter(p => p.TripId === tripId)
+            .map(p => {
+                const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
+                let townBegin = null, townEnd = null, stationBegin = null, stationEnd = null;
+                if (client && country) {
+                    const townBeginId = country.Cod === 0 ? client.TownIdUA : client.TownIdEU;
+                    const townEndId = country.Cod === 0 ? client.TownIdEU : client.TownIdUA;
+                    townBegin = (state.collections.Towns || []).find(t => t.id === townBeginId);
+                    townEnd = (state.collections.Towns || []).find(t => t.id === townEndId);
+
+                    const stationBeginId = country.Cod === 0 ? client.StationIdUA : client.StationIdEU;
+                    const stationEndId = country.Cod === 0 ? client.StationIdEU : client.StationIdUA;
+                    stationBegin = (state.collections.Stations || []).find(s => s.id === stationBeginId);
+                    stationEnd = (state.collections.Stations || []).find(s => s.id === stationEndId);
+                }
+                return { ...p, client, townBegin, townEnd, stationBegin, stationEnd };
+            });
+    }
+
+    return { trip, route, bus, driver, country, items };
 }

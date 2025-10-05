@@ -785,12 +785,22 @@ function generateAgentReport() {
         }
 
         return {
-            tripDate: formatDate(trip.Date, 'dd.mm.yyyy'),
+            rawTripDate: trip.Date.toDate(),
+            // ЗМІНЕНО: Формат дати змінено на 'dd.mm.yy'
+            tripDate: formatDate(trip.Date, 'dd.mm.yy'),
             clientName: client?.Name || 'N/A',
             stationBegin: (stationBegin.split(' ')[0] || '').replace(/,$/, ''),
             stationEnd: (stationEnd.split(' ')[0] || '').replace(/,$/, ''),
             agentId: p.AgentId
         };
+    });
+
+    reportData.sort((a, b) => {
+        const dateComparison = a.rawTripDate - b.rawTripDate;
+        if (dateComparison !== 0) {
+            return dateComparison;
+        }
+        return a.clientName.localeCompare(b.clientName);
     });
 
     state.lastAgentReportData = reportData;
@@ -809,13 +819,15 @@ function generateAgentReport() {
             return groups;
         }, {});
 
-        let count = 0;
+        // ЗМІНЕНО: Видалено зовнішній лічильник 'count'
         Object.keys(groupedData).forEach(agentId => {
             const agentName = agentId === 'none' ? 'Без агента' : (state.collections.Agents.find(a => a.id === agentId)?.Name || 'Невідомий');
             tableRows += `<tr class="group-header-row" style="font-size: 10pt;"><td colspan="5">${agentName}</td></tr>`;
-            groupedData[agentId].forEach(item => {
-                count++;
-                tableRows += `<tr style="font-size: 9pt;"><td>${count}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
+
+            // ЗМІНЕНО: Використовуємо індекс внутрішнього циклу для нумерації
+            groupedData[agentId].forEach((item, index) => {
+                // Нумерація (index + 1) тепер починається з 1 для кожної групи
+                tableRows += `<tr style="font-size: 9pt;"><td>${index + 1}</td><td>${item.tripDate}</td><td>${item.clientName}</td><td>${item.stationBegin}</td><td>${item.stationEnd}</td></tr>`;
             });
         });
     } else {

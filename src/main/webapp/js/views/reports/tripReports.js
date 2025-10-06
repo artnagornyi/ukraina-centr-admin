@@ -1,6 +1,7 @@
-// js/views/reports/tripReports.js
-import { state } from '/js/state.js';
-import { getTripData, formatDate } from '/js/utils.js';
+// js/views/Reports/tripReports.js
+import { state } from '../../state.js';
+import { formatDate } from '../../utils.js';
+import { getTripData } from '../reportUtils.js';
 
 export function generateCallListReport(reportDisplayArea, tripReportsSection) {
     const data = getTripData(state.selectedTripId, 'Passengers');
@@ -30,7 +31,7 @@ export function generateCallListReport(reportDisplayArea, tripReportsSection) {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
         <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">
@@ -130,7 +131,7 @@ export function generateDepartureReport(reportDisplayArea, tripReportsSection) {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
             <div style="font-size: 10pt;">
                 <span>Пасажирів всього: </span><strong>${passengers.length}</strong><span> + додаткових місць: </span><strong>${additionalSeatsCount}</strong>
@@ -188,7 +189,7 @@ export function generateArrivalReport(reportDisplayArea, tripReportsSection) {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                <span style="text-align: right; font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
         <table class="report-table" style="font-size: 8pt;"><tbody>${tableBodyHTML}</tbody></table>`;
@@ -218,7 +219,7 @@ export function generateTransitReport(reportDisplayArea, tripReportsSection) {
             </div>
             <div class="report-header-flex-row">
                 <span>${driver?.Name || ''}</span>
-                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
             </div>
         </div>
         <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse;">

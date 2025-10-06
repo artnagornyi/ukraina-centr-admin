@@ -82,29 +82,29 @@
     <url-pattern>/_ah/start</url-pattern>
   </servlet-mapping>
 
-  <security-constraint>
-    <web-resource-collection>
-      <web-resource-name>profile</web-resource-name>
-      <url-pattern>/*</url-pattern>
-    </web-resource-collection>
-    <user-data-constraint>
-      <transport-guarantee>CONFIDENTIAL</transport-guarantee> <!-- Require HTTPS. -->
-    </user-data-constraint>
-    <auth-constraint>
-      <role-name>*</role-name> <!-- Require users to login. -->
-    </auth-constraint>
-  </security-constraint>
+<!--  <security-constraint>-->
+<!--    <web-resource-collection>-->
+<!--      <web-resource-name>profile</web-resource-name>-->
+<!--      <url-pattern>/*</url-pattern>-->
+<!--    </web-resource-collection>-->
+<!--    <user-data-constraint>-->
+<!--      <transport-guarantee>CONFIDENTIAL</transport-guarantee> &lt;!&ndash; Require HTTPS. &ndash;&gt;-->
+<!--    </user-data-constraint>-->
+<!--    <auth-constraint>-->
+<!--      <role-name>*</role-name> &lt;!&ndash; Require users to login. &ndash;&gt;-->
+<!--    </auth-constraint>-->
+<!--  </security-constraint>-->
 
-  <security-constraint>
-    <web-resource-collection>
-      <web-resource-name>profile</web-resource-name>
-      <url-pattern>/</url-pattern>
-    </web-resource-collection>
-    <user-data-constraint>
-      <transport-guarantee>CONFIDENTIAL</transport-guarantee>
-    </user-data-constraint>
-    <auth-constraint>
-      <role-name>admin</role-name>
-    </auth-constraint>
-  </security-constraint>
+<!--  <security-constraint>-->
+<!--    <web-resource-collection>-->
+<!--      <web-resource-name>profile</web-resource-name>-->
+<!--      <url-pattern>/</url-pattern>-->
+<!--    </web-resource-collection>-->
+<!--    <user-data-constraint>-->
+<!--      <transport-guarantee>CONFIDENTIAL</transport-guarantee>-->
+<!--    </user-data-constraint>-->
+<!--    <auth-constraint>-->
+<!--      <role-name>admin</role-name>-->
+<!--    </auth-constraint>-->
+<!--  </security-constraint>-->
 </web-app>

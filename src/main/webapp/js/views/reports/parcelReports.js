@@ -1,6 +1,7 @@
-// js/views/reports/parcelReports.js
-import { state } from '/js/state.js';
-import { getTripData, formatDate } from '/js/utils.js';
+// js/views/Reports/parcelReports.js
+import { state } from '../../state.js';
+import { formatDate } from '../../utils.js';
+import { getTripData } from '../reportUtils.js';
 
 export function generateRomaReport(reportDisplayArea, parcelReportsSection) {
     const data = getTripData(state.selectedTripId, 'Parcels');
@@ -39,7 +40,7 @@ export function generateRomaReport(reportDisplayArea, parcelReportsSection) {
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
@@ -129,7 +130,7 @@ export function generateParcelDepartureCitiesReport(reportDisplayArea, parcelRep
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
@@ -201,7 +202,7 @@ export function generateKropyvnytskyiReport(reportDisplayArea, parcelReportsSect
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
@@ -273,7 +274,7 @@ export function generateNovaPoshtaReport(reportDisplayArea, parcelReportsSection
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">
@@ -367,7 +368,7 @@ export function generateParcelArrivalCitiesReport(reportDisplayArea, parcelRepor
                 <tbody>
                     <tr>
                         <td style="text-align: left; border: none; padding: 0;">
-                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yy')}</span>
+                            <span style="font-weight: bold;">${formatDate(trip?.Date, 'dd.mm.yyyy')}</span>
                             <span style="margin-left: 1rem;">${route?.Name || ''}</span>
                         </td>
                         <td style="text-align: right; border: none; padding: 0;">

@@ -23,21 +23,25 @@ const homeLink = document.getElementById('home-link');
 function authenticateUser() {
     signInAnonymously(auth).catch(error => {
         console.error("Authentication Error:", error);
-        if (error.code === 'auth/admin-restricted-operation') {
-            authStatusText.innerHTML = `<b>Помилка:</b> Анонімний вхід вимкнено. <br/>Увімкніть його в налаштуваннях Firebase: Authentication -> Sign-in method.`;
-        } else {
-            authStatusText.textContent = `Помилка автентифікації: ${error.message}`;
-        }
+        authStatusText.innerHTML = `<b>Помилка автентифікації:</b><br/>${error.message}.<br/>Перевірте налаштування Firebase.`;
     });
 }
 
 onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        authStatusText.textContent = 'Автентифікація успішна. Завантаження даних...';
-        await initializeAppLogic();
-        authOverlay.classList.add('hidden');
-        appView.classList.remove('hidden');
-    } else {
+    try {
+        if (user) {
+            authStatusText.textContent = 'Автентифікація успішна. Завантаження даних...';
+            await initializeAppLogic();
+            authOverlay.classList.add('hidden');
+            appView.classList.remove('hidden');
+        } else {
+            // Keep the overlay visible if there's no user
+            authOverlay.classList.remove('hidden');
+            appView.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error("Critical Initialization Error:", error);
+        authStatusText.innerHTML = `<b>Критична помилка під час ініціалізації:</b><br/><pre>${error.stack}</pre>`;
         authOverlay.classList.remove('hidden');
         appView.classList.add('hidden');
     }
@@ -62,33 +66,47 @@ async function initializeAppLogic() {
 async function setupRealtimeListeners() {
     const collectionsToListen = ['Passengers', 'Parcels', 'Clients', 'Users', 'Agents', 'Buses', 'Drivers', 'Country', 'Stations', 'Towns', 'Routes', 'Trips'];
 
-    const promises = collectionsToListen.map(name => new Promise((resolve) => {
+    const promises = collectionsToListen.map(name => new Promise((resolve, reject) => {
         if (state.listeners[name]) state.listeners[name](); // Unsubscribe from old listener
 
         const q = query(collection(db, name));
+        let isFirstLoadForThisListener = true;
 
         state.listeners[name] = onSnapshot(q, (snapshot) => {
-            const isFirstLoad = !state.collections[name];
-            state.collections[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            try {
+                state.collections[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            if (name === 'Trips' && isFirstLoad) {
-                selectDefaultTrip();
-            }
-
-            // Re-render the current view with the updated state
-            switch (state.currentView) {
-                case 'main': renderMainPage(); break;
-                case 'parcels': renderParcelsPage(); break;
-                case 'directories': renderDirectoryPage(); break;
-                case 'reports': renderReportsPage(); break;
+                if (isFirstLoadForThisListener) {
+                    if (name === 'Trips') {
+                        selectDefaultTrip();
+                    }
+                    isFirstLoadForThisListener = false;
+                    resolve(); // Resolve promise on first successful data load
+                } else {
+                    // On subsequent updates, just re-render the current view
+                    switch (state.currentView) {
+                        case 'main': renderMainPage(); break;
+                        case 'parcels': renderParcelsPage(); break;
+                        case 'directories': renderDirectoryPage(); break;
+                        case 'reports': renderReportsPage(); break;
+                    }
+                }
+            } catch (renderError) {
+                // Catch errors inside the snapshot callback and reject the main promise
+                reject(renderError);
             }
         }, (error) => {
+            // This is the error callback from onSnapshot
             console.error(`Error listening to ${name}:`, error);
+            reject(new Error(`Помилка завантаження колекції '${name}'. Перевірте правила безпеки Firestore.`));
         });
-        resolve();
     }));
+
+    // This will now wait for all collections to load their initial data
+    // and will fail if any of the listeners encounters an error.
     await Promise.all(promises);
 }
+
 
 // --- VIEW MANAGEMENT ---
 function switchView(viewName) {
@@ -156,7 +174,7 @@ function setupGlobalEventListeners() {
                 exitMessageContainer.id = 'exit-message-container';
                 exitMessageContainer.innerHTML = `<div class="flex items-center justify-center h-screen bg-gray-100">
                         <div class="bg-white p-10 rounded-lg shadow-lg text-center">
-                            <h1 class="text-2xl font-bold text-gray-800">Роботу завершено</h1>
+                            <h1 class="text-2xl font-bold text-gray-800">Захист від кота!</h1>
                             <p class="text-gray-600 mt-2">Ви можете закрити це вікно.</p>
                         </div>
                     </div>`;

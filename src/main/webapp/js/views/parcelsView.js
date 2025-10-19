@@ -181,22 +181,22 @@ export function initParcelsView() {
     parcelsPageView.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow-md">
             <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-                <div class="flex items-center">
+                <div class="flex items-center w-full md:w-auto">
                     <label for="parcels-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
-                    <div id="parcel-trip-select-container" class="relative">
-                        <input type="text" id="parcels-trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="off" placeholder="Оберіть рейс...">
+                    <div id="parcel-trip-select-container" class="relative flex-grow">
+                        <input type="text" id="parcels-trip-select-input" class="w-full border border-gray-300 rounded-md p-2" autocomplete="off" placeholder="Оберіть рейс...">
                         <div id="parcels-trip-select-results" class="autocomplete-results hidden"></div>
                     </div>
                 </div>
-                <div class="flex-grow">
+                <div class="flex-grow w-full md:w-auto">
                     <div class="relative">
                         <input type="text" id="parcel-search-input" class="w-full border border-gray-300 rounded-md p-2 pl-10" placeholder="Пошук посилок (F7)">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span id="parcel-record-count" class="text-sm text-gray-500 font-bold mr-4"></span>
-                    <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                    <span id="parcel-record-count" class="text-sm text-gray-500 font-bold"></span>
+                    <button id="add-parcel-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" style="fill: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span>Додати посилку</span>
                     </button>
@@ -312,7 +312,7 @@ export function renderParcelsPage() {
     `;
 
     const tableHTML = `
-        <table class="min-w-full bg-white">
+        <table class="min-w-full bg-white whitespace-nowrap">
             <thead id="parcels-table-head" class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
                 <tr>
                     ${headerCells}
@@ -354,7 +354,7 @@ function renderParcelRow(parcel, isFromUkraine) {
     const npCell = `<td class="py-3 px-6 text-left" data-field="ClientNP" data-client-id="${parcel.ClientId}">${parcel.ClientNP || ''}</td>`;
 
     const dataCells = `
-        <td class="py-3 px-6 text-left whitespace-nowrap">${parcel.ClientName || 'N/A'}</td>
+        <td class="py-3 px-6 text-left">${parcel.ClientName || 'N/A'}</td>
         <td class="py-3 px-6 text-left">${parcel.StationBegin}</td>
         <td class="py-3 px-6 text-left">${parcel.StationEnd}</td>
         ${isFromUkraine

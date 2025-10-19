@@ -1,6 +1,6 @@
 // js/ui/modal.js
 import { db } from '../firebase.js';
-import { doc, setDoc, addDoc, query, collection, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, setDoc, addDoc, query, collection, where, getDocs, Timestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { state, DIRECTORIES, PASSENGER_FIELDS, PARCEL_FIELDS, DAY_OF_WEEK_MAP, FK_MAP } from '../state.js';
 import { formatDate, parseDateString, getDisplayValue } from '../utils.js';
 import { setupAutocomplete } from './autocomplete.js';
@@ -13,14 +13,13 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         const modals = modalContainer.querySelectorAll('.modal-overlay');
         if (modals.length > 0) {
-            // Get the last modal, which is the top-most one
             const topModal = modals[modals.length - 1];
             e.preventDefault();
             e.stopPropagation();
             topModal.remove();
         }
     }
-}, true); // Use capturing to ensure this runs before other listeners can stop propagation
+}, true);
 
 export function openInfoModal(message) {
     const modalHTML = `
@@ -144,7 +143,7 @@ export function openPassengerModal(passengerId = null) {
     }
 
     const focusTargetId = isEditing ? 'textarea-Note' : 'autocomplete-input-ClientId';
-    setupModal(newModal, (e) => handlePassengerFormSubmit(e, passengerId), focusTargetId);
+    setupModal(newModal, (e) => handlePassengerFormSubmit(e, passengerId));
 
     for (const key in PASSENGER_FIELDS) {
         if (FK_MAP[key]) {
@@ -328,7 +327,7 @@ function setupModal(modalElement, submitHandler, focusTargetId = null) {
                         nextElement.select();
                     }
                 } else {
-                    form.querySelector('button[type="submit"]')?.click();
+                    form.requestSubmit();
                 }
             }
         }
@@ -382,7 +381,8 @@ async function handleDirectoryFormSubmit(e, collectionName, itemId, onSaveCallba
 
 async function handlePassengerFormSubmit(e, passengerId) {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const form = e.target;
+    const formData = new FormData(form);
     const data = {
         AgentId: formData.get('AgentId') || null,
         TripId: formData.get('TripId'),
@@ -393,8 +393,56 @@ async function handlePassengerFormSubmit(e, passengerId) {
         Place: formData.has('Place')
     };
 
-    if (!data.TripId || !data.ClientId) {
-        return openInfoModal("Будь ласка, оберіть рейс та клієнта.");
+    if (!data.ClientId) {
+        return openInfoModal("Будь ласка, оберіть клієнта.");
+    }
+
+    // Check for open-dated ticket only when creating a new passenger
+    if (!passengerId) {
+        try {
+            const openDateRoute = (state.collections.Routes || []).find(r => r.Cod === 0);
+            if (openDateRoute) {
+                const openDateTrip = (state.collections.Trips || []).find(t => t.RouteId === openDateRoute.id);
+                if (openDateTrip) {
+                    const openTicketPassenger = (state.collections.Passengers || []).find(p =>
+                        p.ClientId === data.ClientId && p.TripId === openDateTrip.id && !p.Canceled
+                    );
+
+                    if (openTicketPassenger) {
+                        if (!data.TripId || data.TripId === openDateTrip.id) {
+                            return openInfoModal("Клієнт має квиток з відкритою датою. Будь ласка, оберіть дійсний рейс, щоб використати квиток.");
+                        }
+
+                        const client = (state.collections.Clients || []).find(c => c.id === data.ClientId);
+                        const clientName = client?.Name || 'цього пасажира';
+
+                        openConfirmModal(
+                            `У пасажира "${clientName}" є квиток з відкритою датою! Використати його для цього рейсу?`,
+                            async () => { // onConfirm callback
+                                try {
+                                    data.Ticket = true;
+                                    data.Booking = Timestamp.now();
+                                    await addDoc(collection(db, 'Passengers'), data);
+                                    await deleteDoc(doc(db, 'Passengers', openTicketPassenger.id));
+                                    form.closest('.modal-overlay')?.remove();
+                                } catch (error) {
+                                    console.error("Error using open-dated ticket:", error);
+                                    openInfoModal(`Помилка використання квитка: ${error.message}`);
+                                }
+                            }
+                        );
+                        return; // Stop, wait for user confirmation.
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error checking for open-dated ticket:", error);
+        }
+    }
+
+    // Standard validation and save logic
+    if (!data.TripId) {
+        return openInfoModal("Будь ласка, оберіть рейс.");
     }
 
     try {
@@ -404,12 +452,13 @@ async function handlePassengerFormSubmit(e, passengerId) {
             data.Booking = Timestamp.now();
             await addDoc(collection(db, 'Passengers'), data);
         }
-        e.target.closest('.modal-overlay')?.remove();
+        form.closest('.modal-overlay')?.remove();
     } catch (error) {
         console.error("Error saving passenger:", error);
         openInfoModal(`Помилка збереження пасажира: ${error.message}`);
     }
 }
+
 
 async function handleParcelFormSubmit(e, parcelId) {
     e.preventDefault();

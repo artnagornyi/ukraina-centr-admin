@@ -123,6 +123,7 @@ function renderPassengerTable(tripId) {
     let enriched = passengersToDisplay.map(p => {
         const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
         const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+        const agent = (state.collections.Agents || []).find(a => a.id === p.AgentId);
         const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
         const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
         let stationBegin, stationEnd, stationBeginCode, stationEndCode;
@@ -145,7 +146,7 @@ function renderPassengerTable(tripId) {
                 stationEndCode = stEndUA?.Cod || 0;
             }
         }
-        return { ...p, ClientName: client?.Name || '', TripDate: trip?.Date, StationBegin: stationBegin, StationEnd: stationEnd, StationBeginCode: stationBeginCode, StationEndCode: stationEndCode };
+        return { ...p, ClientName: client?.Name || '', AgentName: agent?.Name || '', TripDate: trip?.Date, StationBegin: stationBegin, StationEnd: stationEnd, StationBeginCode: stationBeginCode, StationEndCode: stationEndCode };
     });
 
     if (state.passengerSearchTerm) {
@@ -154,6 +155,7 @@ function renderPassengerTable(tripId) {
             return (p.ClientName || '').toLowerCase().includes(term) ||
                 (p.StationBegin || '').toLowerCase().includes(term) ||
                 (p.StationEnd || '').toLowerCase().includes(term) ||
+                (p.AgentName || '').toLowerCase().includes(term) ||
                 (p.Note || '').toLowerCase().includes(term);
         });
     }
@@ -216,6 +218,7 @@ function renderPassengerTable(tripId) {
                 <td class="p-3 text-sm">${p.ClientName || ''}</td>
                 <td class="p-3 text-sm">${p.StationBegin}</td>
                 <td class="p-3 text-sm">${p.StationEnd}</td>
+                <td class="p-3 text-sm">${p.AgentName || ''}</td>
                 <td class="p-3 text-sm">${p.Note || ''}</td>
                 <td class="p-3">
                     <button class="status-btn text-xl ${p.Status ? '' : 'opacity-25'}" data-id="${p.id}" title="Підтверджено">✅</button>
@@ -300,33 +303,34 @@ export function initMainView() {
     mainPageView = document.getElementById('main-page-view');
     mainPageView.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center">
+            <div id="trip-info" class="w-full md:w-auto text-center text-lg font-bold order-first md:order-none"></div>
+            <div class="flex items-center w-full md:w-auto">
                 <label for="main-trip-select-input" class="mr-2 font-semibold">Рейс:</label>
-                <div id="trip-select-container" class="relative">
-                    <input type="text" id="main-trip-select-input" class="border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук...">
+                <div id="trip-select-container" class="relative flex-grow">
+                    <input type="text" id="main-trip-select-input" class="w-full border border-gray-300 rounded-md p-2" autocomplete="new-password" placeholder="дд.мм.рр або пошук...">
                     <div id="main-trip-select-results" class="autocomplete-results hidden"></div>
                 </div>
             </div>
-            <div class="flex-grow">
+            <div class="flex-grow w-full md:w-auto">
                 <div class="relative">
                     <input type="text" id="passenger-search-input" class="w-full border border-gray-300 rounded-md p-2 pl-10" placeholder="Пошук пасажира (F7)">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
                 </div>
             </div>
-            <div id="trip-info" class="text-lg font-bold"></div>
-            <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+            <button id="add-passenger-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 w-full md:w-auto justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                 <span>Додати пасажира</span>
             </button>
         </div>
         <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-            <table class="w-full text-left">
+            <table class="w-full text-left whitespace-nowrap">
                 <thead id="passengers-table-head" class="bg-gray-50 border-b-2 border-gray-200">
                 <tr>
                     <th id="passenger-date-header" data-sort-key="TripDate" class="p-3 text-sm font-semibold tracking-wide">Дата поїздки</th>
                     <th data-sort-key="ClientName" class="p-3 text-sm font-semibold tracking-wide">Ім'я клієнта</th>
                     <th data-sort-key="StationBegin" class="p-3 text-sm font-semibold tracking-wide">Пункт відправлення</th>
                     <th data-sort-key="StationEnd" class="p-3 text-sm font-semibold tracking-wide">Пункт прибуття</th>
+                    <th data-sort-key="AgentName" class="p-3 text-sm font-semibold tracking-wide">Агент</th>
                     <th data-sort-key="Note" class="p-3 text-sm font-semibold tracking-wide">Примітка</th>
                     <th class="p-3 text-sm font-semibold tracking-wide">Дії</th>
                 </tr>

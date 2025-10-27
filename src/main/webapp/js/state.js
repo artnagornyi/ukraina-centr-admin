@@ -26,6 +26,7 @@ export const PASSENGER_FIELDS = {
 export const PARCEL_FIELDS = {
     ClientId: { label: 'Клієнт', type: 'fk', required: true },
     TripId: { label: 'Рейс', type: 'fk', required: true },
+    AgentId: { label: 'Агент', type: 'fk' },
     Name: { label: 'Опис багажу', type: 'text' },
     Weight: { label: 'Вага (кг)', type: 'text' },
     Money: { label: 'Кошти', type: 'text' },

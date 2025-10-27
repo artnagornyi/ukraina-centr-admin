@@ -24,10 +24,11 @@ function getFilteredParcels() {
     let parcels = (state.collections.Parcels || []).filter(p => state.selectedTripId === 'all' || p.TripId === state.selectedTripId);
 
     if (state.parcelFilter) {
-        const filter = state.parcelFilter;
+        const filter = state.parcelFilter.toLowerCase();
         const enriched = parcels.map(p => {
             const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
-            return { ...p, ClientName: client?.Name || '', ClientNP: client?.NPNum || '' };
+            const agent = (state.collections.Agents || []).find(a => a.id === p.AgentId);
+            return { ...p, ClientName: client?.Name || '', ClientNP: client?.NPNum || '', AgentName: agent?.Name || '' };
         });
 
         parcels = enriched.filter(p =>
@@ -36,6 +37,7 @@ function getFilteredParcels() {
             (p.Name || '').toLowerCase().includes(filter) ||
             (p.Money || '').toLowerCase().includes(filter) ||
             (p.ClientNP || '').toLowerCase().includes(filter) ||
+            (p.AgentName || '').toLowerCase().includes(filter) ||
             ((p.Weight || '').toString().toLowerCase().includes(filter))
         );
     }
@@ -255,6 +257,7 @@ export function renderParcelsPage() {
     let enrichedParcels = filteredParcels.map(p => {
         const client = (state.collections.Clients || []).find(c => c.id === p.ClientId);
         const trip = (state.collections.Trips || []).find(t => t.id === p.TripId);
+        const agent = (state.collections.Agents || []).find(a => a.id === p.AgentId);
         const routeOfParcel = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
         const countryOfParcel = routeOfParcel ? (state.collections.Country || []).find(c => c.id === routeOfParcel.CountryId) : null;
 
@@ -271,6 +274,7 @@ export function renderParcelsPage() {
             ...p,
             ClientName: client?.Name || '',
             ClientNP: client?.NPNum || '',
+            AgentName: agent?.Name || '',
             StationBegin: stationBegin,
             StationEnd: stationEnd,
         };
@@ -295,6 +299,7 @@ export function renderParcelsPage() {
         state.selectedParcelId = null;
     }
 
+    const agentHeader = isFromUkraine ? '' : `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="AgentName">Агент</th>`;
     const baggageHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Name">Багаж</th>`;
     const weightHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="Weight">Вага</th>`;
     const npHeader = `<th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientNP">Нова Пошта</th>`;
@@ -303,6 +308,7 @@ export function renderParcelsPage() {
         <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="ClientName">Клієнт</th>
         <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationBegin">Відправлення</th>
         <th class="py-3 px-6 text-left cursor-pointer" data-sort-key="StationEnd">Отримання</th>
+        ${agentHeader}
         ${isFromUkraine
         ? baggageHeader + weightHeader
         : npHeader + baggageHeader
@@ -349,6 +355,7 @@ export function renderParcelsPage() {
 function renderParcelRow(parcel, isFromUkraine) {
     const isUnpaid = parcel.Paid === false;
 
+    const agentCell = isFromUkraine ? '' : `<td class="py-3 px-6 text-left">${parcel.AgentName || ''}</td>`;
     const baggageCell = `<td class="py-3 px-6 text-left">${parcel.Name || ''}</td>`;
     const weightCell = `<td class="py-3 px-6 text-left">${parcel.Weight || ''}</td>`;
     const npCell = `<td class="py-3 px-6 text-left" data-field="ClientNP" data-client-id="${parcel.ClientId}">${parcel.ClientNP || ''}</td>`;
@@ -357,6 +364,7 @@ function renderParcelRow(parcel, isFromUkraine) {
         <td class="py-3 px-6 text-left">${parcel.ClientName || 'N/A'}</td>
         <td class="py-3 px-6 text-left">${parcel.StationBegin}</td>
         <td class="py-3 px-6 text-left">${parcel.StationEnd}</td>
+        ${agentCell}
         ${isFromUkraine
         ? baggageCell + weightCell
         : npCell + baggageCell

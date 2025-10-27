@@ -192,6 +192,7 @@ export function openParcelModal(parcelId = null) {
                     <div class="space-y-4">
                         ${formFields.ClientId}
                         ${formFields.TripId}
+                        <div id="agent-field-container">${formFields.AgentId}</div>
                         <div id="client-info-display" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700 space-y-1 hidden"></div>
                         ${formFields.Name}
                         <div class="flex gap-4">
@@ -245,6 +246,23 @@ export function openParcelModal(parcelId = null) {
         }
         const observer = new MutationObserver(() => updateClientInfoDisplay(clientHiddenInput.value, newModal));
         observer.observe(clientHiddenInput, { attributes: true, attributeFilter: ['value'] });
+    }
+
+    const tripHiddenInput = form.querySelector('input[name="TripId"]');
+    const agentFieldContainer = form.querySelector('#agent-field-container');
+
+    const toggleAgentField = (tripId) => {
+        const trip = (state.collections.Trips || []).find(t => t.id === tripId);
+        const route = trip ? (state.collections.Routes || []).find(r => r.id === trip.RouteId) : null;
+        const country = route ? (state.collections.Country || []).find(c => c.id === route.CountryId) : null;
+        const isFromUkraine = country ? country.Cod === 0 : true; // Default to true if no data
+        agentFieldContainer.style.display = isFromUkraine ? 'none' : 'block';
+    };
+
+    if (tripHiddenInput) {
+        toggleAgentField(tripHiddenInput.value);
+        const observer = new MutationObserver(() => toggleAgentField(tripHiddenInput.value));
+        observer.observe(tripHiddenInput, { attributes: true, attributeFilter: ['value'] });
     }
 }
 
@@ -467,6 +485,7 @@ async function handleParcelFormSubmit(e, parcelId) {
     const data = {
         TripId: formData.get('TripId'),
         ClientId: formData.get('ClientId'),
+        AgentId: formData.get('AgentId') || null,
         Name: formData.get('Name') || '',
         Weight: formData.get('Weight') || '',
         Money: formData.get('Money') || '',

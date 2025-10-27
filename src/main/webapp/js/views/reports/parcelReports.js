@@ -196,6 +196,15 @@ export function generateKropyvnytskyiReport(reportDisplayArea, parcelReportsSect
 
     const kropParcels = allParcels.filter(p => p.townEnd?.Name === 'Кропивницький');
 
+    const groupedByAgent = kropParcels.reduce((groups, p) => {
+        const agentId = p.AgentId || 'no-agent';
+        if (!groups[agentId]) {
+            groups[agentId] = [];
+        }
+        groups[agentId].push(p);
+        return groups;
+    }, {});
+
     let reportHTML = `
         <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
             <table style="width: 100%; border: none;">
@@ -216,8 +225,7 @@ export function generateKropyvnytskyiReport(reportDisplayArea, parcelReportsSect
     if (kropParcels.length === 0) {
         reportHTML += '<p class="text-center text-gray-500">Посилок до м. Кропивницький для цього рейсу не знайдено.</p>';
     } else {
-        reportHTML += `
-        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+        const tableHead = `
             <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000; font-size: 10pt;">
                  <tr style="font-weight: normal; text-align: center;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
@@ -227,28 +235,40 @@ export function generateKropyvnytskyiReport(reportDisplayArea, parcelReportsSect
                     <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
                     <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
                 </tr>
-            </thead>
-            <tbody>`;
+            </thead>`;
 
-        kropParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+        let tableBody = '';
+        const agentIds = Object.keys(groupedByAgent);
 
-        kropParcels.forEach((p, index) => {
-            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-            const moneyCellContent = p.Money || '';
-            const isLastRow = index === kropParcels.length - 1;
-            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
+        agentIds.forEach(agentId => {
+            const agent = (state.collections.Agents || []).find(a => a.id === agentId);
+            const agentName = agent ? agent.Name : "Без агента";
+            const parcels = groupedByAgent[agentId];
 
-            reportHTML += `
-            <tr class="passenger-row" style="${rowStyle}">
-                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
-                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
-                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
-                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
-            </tr>`;
+            tableBody += `<tr class="group-header-row"><td colspan="6" style="font-size: 10pt; font-weight: bold; text-align: left; padding-top: 0.5rem;">${agentName}</td></tr>`;
+
+            parcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            parcels.forEach((p, index) => {
+                const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+                const moneyCellContent = p.Money || '';
+                tableBody += `
+                    <tr class="passenger-row">
+                        <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
+                        <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
+                        <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
+                        <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
+                        <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
+                        <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
+                    </tr>`;
+            });
         });
-        reportHTML += `</tbody></table>`;
+
+        reportHTML += `
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            ${tableHead}
+            <tbody>${tableBody}</tbody>
+        </table>`;
     }
 
     reportDisplayArea.innerHTML = reportHTML;
@@ -267,6 +287,15 @@ export function generateNovaPoshtaReport(reportDisplayArea, parcelReportsSection
     }
 
     const npParcels = allParcels.filter(p => p.client?.NPNum);
+
+    const groupedByAgent = npParcels.reduce((groups, p) => {
+        const agentId = p.AgentId || 'no-agent';
+        if (!groups[agentId]) {
+            groups[agentId] = [];
+        }
+        groups[agentId].push(p);
+        return groups;
+    }, {});
 
     let reportHTML = `
         <div class="report-header" style="font-size: 11pt; margin-bottom: 1rem;">
@@ -288,8 +317,7 @@ export function generateNovaPoshtaReport(reportDisplayArea, parcelReportsSection
     if (npParcels.length === 0) {
         reportHTML += '<p class="text-center text-gray-500">Посилок з вказаною Новою Поштою для цього рейсу не знайдено.</p>';
     } else {
-        reportHTML += `
-        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+        const tableHead = `
             <thead style="background-color: #f2f2f2; border-bottom: 1px solid #000; font-size: 10pt;">
                  <tr style="font-weight: normal; text-align: center;">
                     <th style="width: 3%; padding: 4px; font-weight: normal; text-align: center; border: none; border-right: 1px solid #ccc;">№</th>
@@ -301,30 +329,42 @@ export function generateNovaPoshtaReport(reportDisplayArea, parcelReportsSection
                     <th style="width: 5%; padding: 4px; font-weight: normal; text-align: center; border: none;">Вага</th>
                     <th style="width: 10%; padding: 4px; font-weight: normal; text-align: center; border: none; border-left: 1px solid #ccc;">Кошти</th>
                 </tr>
-            </thead>
-            <tbody>`;
+            </thead>`;
 
-        npParcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+        let tableBody = '';
+        const agentIds = Object.keys(groupedByAgent);
 
-        npParcels.forEach((p, index) => {
-            const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
-            const moneyCellContent = p.Money || '';
-            const isLastRow = index === npParcels.length - 1;
-            const rowStyle = isLastRow ? 'border-bottom: 2px solid #000;' : '';
+        agentIds.forEach(agentId => {
+            const agent = (state.collections.Agents || []).find(a => a.id === agentId);
+            const agentName = agent ? agent.Name : "Без агента";
+            const parcels = groupedByAgent[agentId];
 
-            reportHTML += `
-            <tr class="passenger-row" style="${rowStyle}">
-                <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
-                <td style="white-space: nowrap; vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.townEnd?.Name || ''}</td>
-                <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.NPNum || ''}</td>
-                <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
-                <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
-                <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
-            </tr>`;
+            tableBody += `<tr class="group-header-row"><td colspan="8" style="font-size: 10pt; font-weight: bold; text-align: left; padding-top: 0.5rem;">${agentName}</td></tr>`;
+
+            parcels.sort((a, b) => (a.client?.Name || '').localeCompare(b.client?.Name || ''));
+
+            parcels.forEach((p, index) => {
+                const phones = [p.client?.TelUA, p.client?.TelEU].filter(Boolean).join(', ');
+                const moneyCellContent = p.Money || '';
+                tableBody += `
+                    <tr class="passenger-row">
+                        <td style="width: 3%; vertical-align: top; border-right: 1px solid #ccc; padding: 1px 4px;">${index + 1}.</td>
+                        <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.Name || ''}</td>
+                        <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${phones}</td>
+                        <td style="white-space: nowrap; vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.townEnd?.Name || ''}</td>
+                        <td style="white-space: nowrap; vertical-align: top; padding: 1px 4px;">${p.client?.NPNum || ''}</td>
+                        <td style="vertical-align: top; border-left: 1px solid #ccc; padding: 1px 4px;">${p.Name || ''}</td>
+                        <td style="width: 5%; vertical-align: top; text-align: center; padding: 1px 4px;">${p.Weight || ''}</td>
+                        <td style="width: 10%; vertical-align: top; text-align: center; border-left: 1px solid #ccc; padding: 1px 4px;">${moneyCellContent}</td>
+                    </tr>`;
+            });
         });
-        reportHTML += `</tbody></table>`;
+
+        reportHTML += `
+        <table class="report-table" style="font-size: 9pt; width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            ${tableHead}
+            <tbody>${tableBody}</tbody>
+        </table>`;
     }
 
     reportDisplayArea.innerHTML = reportHTML;

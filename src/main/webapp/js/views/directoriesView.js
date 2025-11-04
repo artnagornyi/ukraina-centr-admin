@@ -21,6 +21,49 @@ const DIRECTORY_ICONS = {
     Country: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>`,
 };
 
+const DEPENDENCY_MAP = {
+    Clients: [{ collection: 'Passengers', field: 'ClientId', name: 'Пасажири' }, { collection: 'Parcels', field: 'ClientId', name: 'Посилки' }],
+    Trips: [{ collection: 'Passengers', field: 'TripId', name: 'Пасажири' }, { collection: 'Parcels', field: 'TripId', name: 'Посилки' }],
+    Routes: [{ collection: 'Trips', field: 'RouteId', name: 'Рейси' }],
+    Buses: [{ collection: 'Trips', field: 'BusId', name: 'Рейси' }],
+    Drivers: [{ collection: 'Trips', field: 'DriverId', name: 'Рейси' }],
+    Agents: [{ collection: 'Passengers', field: 'AgentId', name: 'Пасажири' }, { collection: 'Parcels', field: 'AgentId', name: 'Посилки' }],
+    Stations: [{ collection: 'Clients', field: 'StationIdUA', name: 'Клієнти' }, { collection: 'Clients', field: 'StationIdEU', name: 'Клієнти' }],
+    Towns: [{ collection: 'Clients', field: 'TownIdUA', name: 'Клієнти' }, { collection: 'Clients', field: 'TownIdEU', name: 'Клієнти' }],
+    Country: [{ collection: 'Routes', field: 'CountryId', name: 'Маршрути' }, { collection: 'Stations', field: 'CountryId', name: 'Зупинки' }, { collection: 'Towns', field: 'CountryId', name: 'Міста' }],
+};
+
+function findDependency(id, collectionName) {
+    const dependencies = DEPENDENCY_MAP[collectionName];
+    if (!dependencies) return null;
+
+    for (const dep of dependencies) {
+        const found = (state.collections[dep.collection] || []).find(item => item[dep.field] === id);
+        if (found) {
+            return dep.name;
+        }
+    }
+    return null;
+}
+
+async function handleDeleteClick(id, collection, name) {
+    const dependencyName = findDependency(id, collection);
+    if (dependencyName) {
+        openInfoModal(`Неможливо видалити запис, оскільки він використовується в розділі "${dependencyName}".`);
+        return;
+    }
+
+    openConfirmModal(`Ви впевнені, що хочете видалити "${name}"?`, async () => {
+        try {
+            await deleteDoc(doc(db, collection, id));
+        } catch (error) {
+            console.error("Error deleting document: ", error);
+            openInfoModal(`Помилка видалення: ${error.message}`);
+        }
+    });
+}
+
+
 function scrollToSelected() {
     if (!state.selectedDirectoryItemId) return;
     setTimeout(() => {
@@ -330,9 +373,7 @@ export function initDirectoriesView() {
                 if (button.matches('.edit-item-btn')) {
                     openDirectoryModal(collection, id);
                 } else if (button.matches('.delete-item-btn')) {
-                    openConfirmModal(`Ви впевнені, що хочете видалити "${button.dataset.name}"?`, async () => {
-                        await deleteDoc(doc(db, collection, id));
-                    });
+                    handleDeleteClick(id, collection, button.dataset.name);
                 }
             }
             return;

@@ -85,12 +85,13 @@ export function openDirectoryModal(collectionName, itemId = null, defaults = {},
         }
     }
 
-    form.querySelectorAll('input[type="hidden"]').forEach(hidden => {
-        if (hidden.value) {
-            const editBtn = form.querySelector(`#edit-btn-${hidden.name}`);
-            if (editBtn) editBtn.classList.remove('hidden');
-        }
-    });
+    // This logic is now handled by the dynamic button in setupCommonPassengerParcelModalLogic
+    // form.querySelectorAll('input[type="hidden"]').forEach(hidden => {
+    //     if (hidden.value) {
+    //         const editBtn = form.querySelector(`#edit-btn-${hidden.name}`);
+    //         if (editBtn) editBtn.classList.remove('hidden');
+    //     }
+    // });
 
     if (collectionName === 'Trips') {
         const dateInput = form.querySelector('input[name="Date"]');
@@ -119,6 +120,63 @@ export function openDirectoryModal(collectionName, itemId = null, defaults = {},
         routeObserver.observe(form.querySelector('input[name="RouteId"]'), { attributes: true, attributeFilter: ['value'] });
         updateAvailableDates();
     }
+}
+
+function setupCommonPassengerParcelModalLogic(form, newModal) {
+    const actionButton = form.querySelector('#action-btn-ClientId');
+    const clientHiddenInput = form.querySelector('input[name="ClientId"]');
+    const clientVisibleInput = form.querySelector('#autocomplete-input-ClientId');
+
+    if (!actionButton || !clientHiddenInput || !clientVisibleInput) return;
+
+    let currentListener = null;
+
+    const updateClientActionButton = (clientId) => {
+        if (currentListener) {
+            actionButton.removeEventListener('click', currentListener);
+        }
+
+        if (clientId) {
+            actionButton.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 14H3v-2l9-9 2 2-9 9z"/></svg>`;
+            actionButton.title = "Редагувати клієнта (F4)";
+            actionButton.classList.remove('text-blue-500', 'hover:text-blue-700');
+            actionButton.classList.add('text-gray-400', 'hover:text-gray-600');
+
+            currentListener = () => {
+                openDirectoryModal('Clients', clientId, {}, (updatedClient) => {
+                    if (updatedClient) {
+                        clientVisibleInput.value = updatedClient.Name;
+                        updateClientInfoDisplay(updatedClient.id, newModal);
+                    }
+                });
+            };
+        } else {
+            actionButton.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>`;
+            actionButton.title = "Створити нового клієнта";
+            actionButton.classList.remove('text-gray-400', 'hover:text-gray-600');
+            actionButton.classList.add('text-blue-500', 'hover:text-blue-700');
+
+            currentListener = () => {
+                const initialName = clientVisibleInput.value;
+                openDirectoryModal('Clients', null, { Name: initialName }, (newClient) => {
+                    if (newClient && newClient.id) {
+                        clientHiddenInput.value = newClient.id;
+                        clientHiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            };
+        }
+        actionButton.addEventListener('click', currentListener);
+    };
+
+    const observer = new MutationObserver(() => {
+        updateClientInfoDisplay(clientHiddenInput.value, newModal);
+        updateClientActionButton(clientHiddenInput.value);
+    });
+    observer.observe(clientHiddenInput, { attributes: true, attributeFilter: ['value'] });
+
+    updateClientActionButton(clientHiddenInput.value);
+    updateClientInfoDisplay(clientHiddenInput.value, newModal);
 }
 
 export function openPassengerModal(passengerId = null) {
@@ -151,27 +209,7 @@ export function openPassengerModal(passengerId = null) {
         }
     }
 
-    form.querySelectorAll('input[type="hidden"]').forEach(hidden => {
-        if (hidden.value) {
-            const editBtn = form.querySelector(`#edit-btn-${hidden.name}`);
-            if (editBtn) editBtn.classList.remove('hidden');
-        }
-    });
-
-    const clientHiddenInput = form.querySelector('input[name="ClientId"]');
-    if (clientHiddenInput) {
-        if (clientHiddenInput.value) {
-            updateClientInfoDisplay(clientHiddenInput.value, newModal);
-        }
-        const observer = new MutationObserver((mutationsList) => {
-            for (const mutation of mutationsList) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                    updateClientInfoDisplay(mutation.target.value, newModal);
-                }
-            }
-        });
-        observer.observe(clientHiddenInput, { attributes: true });
-    }
+    setupCommonPassengerParcelModalLogic(form, newModal);
 }
 
 export function openParcelModal(parcelId = null) {
@@ -232,21 +270,7 @@ export function openParcelModal(parcelId = null) {
         }
     }
 
-    form.querySelectorAll('input[type="hidden"]').forEach(hidden => {
-        if (hidden.value) {
-            const editBtn = form.querySelector(`#edit-btn-${hidden.name}`);
-            if (editBtn) editBtn.classList.remove('hidden');
-        }
-    });
-
-    const clientHiddenInput = form.querySelector('input[name="ClientId"]');
-    if (clientHiddenInput) {
-        if (clientHiddenInput.value) {
-            updateClientInfoDisplay(clientHiddenInput.value, newModal);
-        }
-        const observer = new MutationObserver(() => updateClientInfoDisplay(clientHiddenInput.value, newModal));
-        observer.observe(clientHiddenInput, { attributes: true, attributeFilter: ['value'] });
-    }
+    setupCommonPassengerParcelModalLogic(form, newModal);
 
     const tripHiddenInput = form.querySelector('input[name="TripId"]');
     const agentFieldContainer = form.querySelector('#agent-field-container');

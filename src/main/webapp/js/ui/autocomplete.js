@@ -7,7 +7,8 @@ export function setupAutocomplete(modalScope, key, collectionName) {
     const input = modalScope.querySelector(`#autocomplete-input-${key}`);
     const hiddenInput = modalScope.querySelector(`input[name="${key}"]`);
     const resultsContainer = modalScope.querySelector(`#autocomplete-results-${key}`);
-    const editBtn = modalScope.querySelector(`#edit-btn-${key}`);
+    const actionBtn = modalScope.querySelector(`#action-btn-${key}`); // Use the generic action button
+
     if (!input || !hiddenInput || !resultsContainer) return;
 
     let activeIndex = -1;
@@ -30,8 +31,10 @@ export function setupAutocomplete(modalScope, key, collectionName) {
 
         if (filtered.length > 0) {
             resultsContainer.innerHTML = filtered.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(collectionName, key, s.id)}</div>`).join('');
+        } else if (searchTerm && key === 'ClientId') {
+            resultsContainer.innerHTML = `<div class="p-2 text-blue-500 cursor-pointer hover:bg-blue-50" id="create-new-from-autocomplete">Не знайдено. Створити нового клієнта?</div>`;
         } else if (searchTerm) {
-            resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Не знайдено. ↓ для створення</div>';
+            resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Не знайдено.</div>';
         } else {
             resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Немає записів.</div>';
         }
@@ -72,7 +75,6 @@ export function setupAutocomplete(modalScope, key, collectionName) {
         hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
         resultsContainer.classList.add('hidden');
         activeIndex = -1;
-        if(editBtn) editBtn.classList.remove('hidden');
 
         if (collectionName === 'Towns') {
             const town = (state.collections.Towns || []).find(t => t.id === id);
@@ -84,8 +86,6 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                 if (stationHiddenInput && stationVisibleInput) {
                     stationHiddenInput.value = town.StationId;
                     stationVisibleInput.value = getDisplayValue(null, stationKey, town.StationId);
-                    const stationEditBtn = form.querySelector(`#edit-btn-${stationKey}`);
-                    if(stationEditBtn) stationEditBtn.classList.remove('hidden');
                 }
             }
         }
@@ -104,7 +104,6 @@ export function setupAutocomplete(modalScope, key, collectionName) {
     input.addEventListener('input', () => {
         hiddenInput.value = '';
         hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-        if(editBtn) editBtn.classList.add('hidden');
         renderResults(input.value);
     });
 
@@ -119,16 +118,6 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                 } else if (activeIndex < items.length - 1) {
                     activeIndex++;
                     setActiveItem();
-                } else if (items.length === 0 && input.value.trim() !== '') {
-                    // If list is empty and user typed something, open create modal
-                    resultsContainer.classList.add('hidden');
-                    const defaultName = DIRECTORIES[collectionName].fields.Name ? { Name: input.value } : {};
-                    openDirectoryModal(collectionName, null, defaultName, (newItem) => {
-                        if (newItem?.id) {
-                            onSelect(newItem.id, getDisplayValue(collectionName, key, newItem.id));
-                            moveToNextField();
-                        }
-                    });
                 }
                 break;
             case 'ArrowUp':
@@ -150,14 +139,12 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                     if (perfectMatch) {
                         onSelect(perfectMatch.id, getDisplayValue(collectionName, key, perfectMatch.id));
                         moveToNextField();
-                    } else if (input.value.trim() !== '') {
-                        // Якщо точного збігу немає і щось введено, відкриваємо модальне вікно створення
+                    } else if (input.value.trim() !== '' && key === 'ClientId') {
                         resultsContainer.classList.add('hidden');
-                        const defaultName = DIRECTORIES[collectionName].fields.Name ? { Name: input.value } : {};
+                        const defaultName = { Name: input.value };
                         openDirectoryModal(collectionName, null, defaultName, (newItem) => {
                             if (newItem?.id) {
-                                const displayName = newItem.Name || newItem.Plate || getDisplayValue(collectionName, key, newItem.id);
-                                onSelect(newItem.id, displayName);
+                                onSelect(newItem.id, newItem.Name);
                                 moveToNextField();
                             }
                         });
@@ -168,7 +155,7 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                 break;
             case 'F4':
                  e.preventDefault();
-                 if (editBtn && !editBtn.classList.contains('hidden')) editBtn.click();
+                 if (actionBtn) actionBtn.click();
                  break;
             case 'Escape':
                 resultsContainer.classList.add('hidden');
@@ -181,19 +168,17 @@ export function setupAutocomplete(modalScope, key, collectionName) {
             const id = e.target.dataset.id;
             onSelect(id, e.target.textContent);
             moveToNextField();
+        } else if (e.target.id === 'create-new-from-autocomplete') {
+            resultsContainer.classList.add('hidden');
+            const defaultName = { Name: input.value };
+            openDirectoryModal('Clients', null, defaultName, (newItem) => {
+                if (newItem?.id) {
+                    onSelect(newItem.id, newItem.Name);
+                    moveToNextField();
+                }
+            });
         }
     });
-
-    if (editBtn) {
-        editBtn.addEventListener('click', () => {
-            const itemId = hiddenInput.value;
-            if (itemId) {
-                openDirectoryModal(collectionName, itemId, {}, (updatedItem) => {
-                    if (updatedItem) input.value = getDisplayValue(collectionName, key, updatedItem.id);
-                });
-            }
-        });
-    }
 
     document.addEventListener('click', (e) => {
         if (!input.contains(e.target) && !resultsContainer.contains(e.target)) {

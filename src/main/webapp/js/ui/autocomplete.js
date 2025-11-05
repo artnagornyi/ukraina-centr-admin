@@ -7,7 +7,7 @@ export function setupAutocomplete(modalScope, key, collectionName) {
     const input = modalScope.querySelector(`#autocomplete-input-${key}`);
     const hiddenInput = modalScope.querySelector(`input[name="${key}"]`);
     const resultsContainer = modalScope.querySelector(`#autocomplete-results-${key}`);
-    const actionBtn = modalScope.querySelector(`#action-btn-${key}`); // Use the generic action button
+    const actionBtn = modalScope.querySelector(`#action-btn-${key}`);
 
     if (!input || !hiddenInput || !resultsContainer) return;
 
@@ -31,10 +31,8 @@ export function setupAutocomplete(modalScope, key, collectionName) {
 
         if (filtered.length > 0) {
             resultsContainer.innerHTML = filtered.map(s => `<div class="autocomplete-item" data-id="${s.id}">${getDisplayValue(collectionName, key, s.id)}</div>`).join('');
-        } else if (searchTerm && key === 'ClientId') {
-            resultsContainer.innerHTML = `<div class="p-2 text-blue-500 cursor-pointer hover:bg-blue-50" id="create-new-from-autocomplete">Не знайдено. Створити нового клієнта?</div>`;
         } else if (searchTerm) {
-            resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Не знайдено.</div>';
+            resultsContainer.innerHTML = `<div class="p-2 text-blue-500 cursor-pointer hover:bg-blue-50 create-new-from-autocomplete" data-collection="${collectionName}">Не знайдено. Створити новий запис?</div>`;
         } else {
             resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Немає записів.</div>';
         }
@@ -139,12 +137,13 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                     if (perfectMatch) {
                         onSelect(perfectMatch.id, getDisplayValue(collectionName, key, perfectMatch.id));
                         moveToNextField();
-                    } else if (input.value.trim() !== '' && key === 'ClientId') {
+                    } else if (input.value.trim() !== '') {
                         resultsContainer.classList.add('hidden');
-                        const defaultName = { Name: input.value };
+                        const defaultName = DIRECTORIES[collectionName]?.fields.Name ? { Name: input.value } : {};
                         openDirectoryModal(collectionName, null, defaultName, (newItem) => {
                             if (newItem?.id) {
-                                onSelect(newItem.id, newItem.Name);
+                                const displayName = getDisplayValue(collectionName, key, newItem.id);
+                                onSelect(newItem.id, displayName);
                                 moveToNextField();
                             }
                         });
@@ -168,12 +167,14 @@ export function setupAutocomplete(modalScope, key, collectionName) {
             const id = e.target.dataset.id;
             onSelect(id, e.target.textContent);
             moveToNextField();
-        } else if (e.target.id === 'create-new-from-autocomplete') {
+        } else if (e.target.classList.contains('create-new-from-autocomplete')) {
             resultsContainer.classList.add('hidden');
-            const defaultName = { Name: input.value };
-            openDirectoryModal('Clients', null, defaultName, (newItem) => {
+            const collection = e.target.dataset.collection;
+            const defaultName = DIRECTORIES[collection]?.fields.Name ? { Name: input.value } : {};
+            openDirectoryModal(collection, null, defaultName, (newItem) => {
                 if (newItem?.id) {
-                    onSelect(newItem.id, newItem.Name);
+                    const displayName = getDisplayValue(collection, key, newItem.id);
+                    onSelect(newItem.id, displayName);
                     moveToNextField();
                 }
             });

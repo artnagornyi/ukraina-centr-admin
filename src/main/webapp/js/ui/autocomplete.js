@@ -89,6 +89,26 @@ export function setupAutocomplete(modalScope, key, collectionName) {
         }
     };
 
+    const createNewItem = () => {
+        resultsContainer.classList.add('hidden');
+        const directoryFields = DIRECTORIES[collectionName]?.fields;
+        const defaultData = {};
+        if (directoryFields) {
+            const mainField = Object.keys(directoryFields).find(f => f.toLowerCase().includes('name') || f.toLowerCase().includes('plate'));
+            if (mainField) {
+                defaultData[mainField] = input.value;
+            }
+        }
+
+        openDirectoryModal(collectionName, null, defaultData, (newItem) => {
+            if (newItem?.id) {
+                const displayName = getDisplayValue(collectionName, key, newItem.id);
+                onSelect(newItem.id, displayName);
+                moveToNextField();
+            }
+        });
+    };
+
     input.addEventListener('focus', () => {
         input.select();
     });
@@ -138,15 +158,7 @@ export function setupAutocomplete(modalScope, key, collectionName) {
                         onSelect(perfectMatch.id, getDisplayValue(collectionName, key, perfectMatch.id));
                         moveToNextField();
                     } else if (input.value.trim() !== '') {
-                        resultsContainer.classList.add('hidden');
-                        const defaultName = DIRECTORIES[collectionName]?.fields.Name ? { Name: input.value } : {};
-                        openDirectoryModal(collectionName, null, defaultName, (newItem) => {
-                            if (newItem?.id) {
-                                const displayName = getDisplayValue(collectionName, key, newItem.id);
-                                onSelect(newItem.id, displayName);
-                                moveToNextField();
-                            }
-                        });
+                        createNewItem();
                     } else {
                         moveToNextField();
                     }
@@ -168,16 +180,7 @@ export function setupAutocomplete(modalScope, key, collectionName) {
             onSelect(id, e.target.textContent);
             moveToNextField();
         } else if (e.target.classList.contains('create-new-from-autocomplete')) {
-            resultsContainer.classList.add('hidden');
-            const collection = e.target.dataset.collection;
-            const defaultName = DIRECTORIES[collection]?.fields.Name ? { Name: input.value } : {};
-            openDirectoryModal(collection, null, defaultName, (newItem) => {
-                if (newItem?.id) {
-                    const displayName = getDisplayValue(collection, key, newItem.id);
-                    onSelect(newItem.id, displayName);
-                    moveToNextField();
-                }
-            });
+            createNewItem();
         }
     });
 

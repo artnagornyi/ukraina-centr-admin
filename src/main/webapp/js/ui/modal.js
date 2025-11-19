@@ -142,8 +142,9 @@ function setupDynamicActionButtons(form, fields, newModal) {
                     currentListener = () => {
                         openDirectoryModal(collectionName, itemId, {}, (updatedItem) => {
                             if (updatedItem) {
-                                visibleInput.value = getDisplayValue(null, key, updatedItem.id);
-                                if (key === 'ClientId') updateClientInfoDisplay(updatedItem.id, newModal);
+                                hiddenInput.value = updatedItem.id;
+                                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                visibleInput.value = getDisplayValue(collectionName, key, updatedItem.id);
                             }
                         });
                     };
